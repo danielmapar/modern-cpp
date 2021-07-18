@@ -1,5 +1,3 @@
 {
-    "files.associations": {
-        "string": "cpp"
-    }
+    "editor.formatOnSave": true
 }

@@ -30,6 +30,14 @@
 
         * In this program we primarily use the GNU Compiler Collection, which is a popular, open-source, cross-platform compiler from the larger GNU Project. In particular, we use the `g++` program, which is a command line executable that compiles C++ source code and **automatically links the C++ Standard Library**.
     
+    * LLVM (low level virtual machine)
+        
+        * This is a new infrastructure of compilers, read more [here](https://llvm.org/)
+
+        * The LLVM Project is a collection of modular and reusable compiler and toolchain technologies. Despite its name, LLVM has little to do with traditional virtual machines. The name "LLVM" itself is not an acronym; it is the full name of the project.
+
+        * LLVM began as a research project at the University of Illinois, with the goal of providing a modern, SSA-based compilation strategy capable of supporting both static and dynamic compilation of arbitrary programming languages. Since then, LLVM has grown to be an umbrella project consisting of a number of subprojects, many of which are being used in production by a wide variety of commercial and open source projects as well as being widely used in academic research. Code in the LLVM project is licensed under the "Apache 2.0 License with LLVM exceptions"
+    
     * Linking
         * ![linker](images/linker.png)
 
@@ -63,6 +71,9 @@
 * Installation
 
     * You are welcome to write all of your code in Udacity's web-based Workspaces. If, however, you prefer to work locally on your machine, you will need to install certain software.
+
+    * llvm and clang (this tutorial uses this compiler)
+        * [Download and instal](https://releases.llvm.org/download.html)
 
     * g++, gdb, make
 
