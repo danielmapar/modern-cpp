@@ -132,18 +132,302 @@
 
 ## Foundations
 
-`#include <iostream>`
+* `#include <iostream>`
 
-- The `#include` is a preprocessor command which is executed before the code is compiled. It searches for the `iostream` header file and pastes its contents into the program. `iostream` contains the declarations for the input/output stream objects.
+    * The `#include` is a preprocessor command which is executed before the code is compiled. It searches for the `iostream` header file and pastes its contents into the program. `iostream` contains the declarations for the input/output stream objects.
 
 
-`using std::cout;`
+* `using std::cout;`
 
-- Namespaces are a way in C++ to group identifiers (names) together. They provide context for identifiers to avoid naming collisions. The `std` namespace is the namespace used for the standard library.
-- The `using` command adds `std::cout` to the global scope of the program. This way you can use `cout` in your code instead of having to write `std::cout`.
-- `cout` is an output stream you will use to send output to the notebook or to a terminal, if you are using one.
-- Note that the second two lines in the example end with a semicolon `;`. Coding statements end with a semicolon in C++. The `#include` statement is a preprocessor command, so it doesn't need one.
+    * Namespaces are a way in C++ to group identifiers (names) together. They provide context for identifiers to avoid naming collisions. The `std` namespace is the namespace used for the standard library.
+    * The `using` command adds `std::cout` to the global scope of the program. This way you can use `cout` in your code instead of having to write `std::cout`.
+    * `cout` is an output stream you will use to send output to the notebook or to a terminal, if you are using one.
+    * Note that the second two lines in the example end with a semicolon `;`. Coding statements end with a semicolon in C++. The `#include` statement is a preprocessor command, so it doesn't need one.
 
-`cout << "Hello!" << "\n";`
+* `cout << "Hello!" << "\n";`
 
-- In this line, the code is using cout to send output to the notebook. The `<<` operator is the stream insertion operator, and it writes what's on the right side of the operator to the left side. So in this case, `"Message here"` is written to the output stream `cout`.
+    * In this line, the code is using cout to send output to the notebook. The `<<` operator is the **stream insertion operator**, and it writes what's on the right side of the operator to the left side. So in this case, `"Message here"` is written to the output stream `cout`.
+
+### Primitive Variable Types
+
+C++ has several "primitive" variable types, which are things like `int`s (integers), `string`s, `float`s, and others. These should be similar to variable types in other programming languages you have used. 
+
+* In the previous concept, you learned about some of the primitive types that C++ offers, including strings and ints, and you learned how to store these types in your program. In this concept, you will learn about one of the most common data structures in C++: the vector.
+
+    * C++ also has several container types that can be used for storing data. We will start with `vector`s, as these will be used throughout this lesson, but we will also introduce other container types as needed.
+
+    * Vectors are a sequence of elements of a single type, and have useful methods for getting the size, testing if the vector is empty, and adding elements to the vector.
+
+    * Check `1-Foundations/2-vector`
+
+    * Unfortunately, there isn't a built-in way to print vectors in C++ using `cout`. You will learn how to access vector elements and you will write your own function to print vectors later. For now, you can see how vectors are created and stored. Below, you can see how to nest vectors to create 2D containers.
+
+    * Check `1-Foundations/2-vector`
+
+    * You may have noticed comments in some of the code up until this point. C++ provides two kinds of comments:
+
+        * ```
+            // You can use two forward slashes for single line comments.
+
+            /*
+            For longer comments, you can enclose the text with an opening
+            slash-star and closing star-slash.
+            */ 
+            ```
+    
+    * You have now seen how to store basic types and vectors containing those types. As you practiced declaring variables, in each case you indicated the type of the variable. It is possible for C++ to do automatic type inference, using the `auto` keyword.
+
+        * Check `1-Foundations/3-auto`
+    
+    * It is helpful to manually declare the type of a variable if you want the variable type to be clear for reader of your code, or if you want to be explicit about the number precision being used; C++ has several number types with different levels of precision, and this precision might not be clear from the value being assigned.
+
+### Store a Grid in Your Program
+
+* In order to write the A* search algorithm, you will need a grid or "board" to search through. We'll be working with this board throughout the remaining exercises, and we'll start by storing a hard-coded board in the main function. In later exercises, you will write code to read the board from a file.
+
+    * Note: you will need to include the vector library, just as iostream is included. You will also need to use the namespace std::vector if you want to write vector rather than std::vector in your code.
+
+    * This exercise will be ungraded, but if you get stuck, you can find the solution in solution.cpp. Finally, if you feel a little crowded in the editor below and need more space to work, you can click the "Expand" button in the lower left corner.
+
+    * Check `1-Foundations/4-grid`
+
+### Loops
+
+* Just as in other languages you've worked with, C++ has both for loops and while loops. You will learn about for loops in the notebook below, and you will see while loops later in the course.
+
+* `Check 1-Foundations/5-loops`
+
+### The Increment Operator
+
+If you haven't seen the `++` operator before, this is the *post-increment operator*, and it is where the `++` in the name "C++" comes from. The operator increments the value of `i`. 
+
+There is also a *pre-increment operator* which is used before a variable, as well as *pre* and *post decrement* operators: `--`. The difference between *pre* and *post* lies in what value is returned by the operator when it is used.
+
+You will only use the *post-increment operator* `i++` for now, but if you are curious, click below for an explanation of the code:
+
+* `Check 1-Foundations/5-loops`
+
+## For Loop with a Container
+
+C++ offers several ways to iterate over containers. One way is to use an index-based loop as above. Another way is using a "range-based loop", which you will see frequently in the rest of this course. See the following code for an example of how this works:
+
+* ```cpp
+    #include <iostream>
+    #include <vector>
+    using std::cout;
+    using std::vector;
+
+    int main() {
+        // Add your code here.
+        vector<int> a {1, 2, 3, 4, 5};
+        for (int i: a) {
+            cout << i << "\n";
+        }
+    }
+    ```
+
+### Functions
+
+In the cell below, there is a simple function to add two numbers and return the result. Test the code below, and click the button for a more in-depth explanation.
+
+* ```cpp
+    #include <iostream>
+    using std::cout;
+
+    // Function declared and defined here.
+    int AdditionFunction(int i, int j) 
+    {
+        return i + j;
+    }
+
+    int main() 
+    {
+        auto d = 3;
+        auto f = 7;
+        cout << AdditionFunction(d, f) << "\n";
+    }
+    ```
+
+
+### File Input Streams
+
+### Creating an Input Stream Object
+
+* In C++, you can use the `std::ifstream` object to handle input file streams. To do this, you will need to include the header file that provides the file streaming classes: `<fstream>`. 
+
+* Once the `<fstream>` header is included, a new input stream object can be declared and initialized using a file path `path`:
+```cpp
+std::ifstream my_file;
+my_file.open(path);
+```
+
+* Alternatively, the declaration and initialization can be done in a single line as follows:
+```
+std::ifstream my_file(path);
+```
+* C++ `ifstream` objects can also be used as a boolean to check if the stream has been created successfully. If the stream were to initialize successfully, then the `ifstream` object would evaluate to `true`. If there were to be an error opening the file or some other error creating the stream, then the `ifstream` object would evaluate to `false`.
+
+* The following cell creates an input stream from the file `"files/1.board"`:
+
+* ```cpp
+    #include <fstream>
+    #include <iostream>
+    #include <string>
+
+    int main()
+    {
+        std::ifstream my_file;
+        my_file.open("files/1.board");
+        if (my_file) {
+        std::cout << "The file stream has been created!" << "\n";
+        }    
+    }
+    ```
+
+### Reading Data from the Stream
+
+* If the input file stream object has been successfully created, the lines of the input stream can be read using the `getline` method. In the cell below, a while loop has been added to the previous example to get each line from the stream and print it to the console.
+
+* ```cpp
+    #include <fstream>
+    #include <iostream>
+    #include <string>
+
+    int main() {
+        std::ifstream my_file;
+        my_file.open("files/1.board");
+        if (my_file) {
+            std::cout << "The file stream has been created!" << "\n";
+            std::string line;
+            while (getline(my_file, line)) {
+                std::cout << line << "\n";
+            }
+        }
+    }
+    ```
+
+
+## Streaming `int`s from a `string` with istringstream
+
+* In C++ strings can be streamed into temporary variables, similarly to how files can be streamed into strings. 
+Streaming a string allows us to work with each character individually.
+
+* One way to stream a string is to use an input string stream object `istringstream` from the `<sstream>` header. 
+
+* Once an `istringstream` object has been created, parts of the string can be streamed and stored using the 
+"extraction operator": `>>`. The extraction operator will read until whitespace is reached or until the stream 
+fails. Execute the following code to see how this works:
+
+```cpp
+#include <iostream>
+#include <sstream>
+#include <string>
+
+using std::istringstream;
+using std::string;
+using std::cout;
+
+int main () 
+{
+    string a("j 2 3");
+
+    istringstream my_stream(a);
+
+    char n;
+    my_stream >> n;
+    cout << n << "\n";
+}
+```
+
+* The `istringstream` object can also be used as a boolean to determine if the last extraction operation failed - this happens if there wasn't any more of the string to stream, for example. If the stream still has more characters, you are able to stream again. See the following code for an example of using the `istringstream` this way:
+
+```cpp
+#include <iostream>
+#include <sstream>
+#include <string>
+
+using std::istringstream;
+using std::string;
+using std::cout;
+
+int main() 
+{
+    string a("1 2 3");
+
+    istringstream my_stream(a);
+
+    int n;
+    
+    // Testing to see if the stream was successful and printing results.
+    while (my_stream) {
+        my_stream >> n;
+        if (my_stream) {
+            cout << "That stream was successful: " << n << "\n";
+        }
+        else {
+            cout << "That stream was NOT successful!" << "\n";            
+        }
+    }
+}
+```
+
+### Adding Data to a Vector
+
+* In the previous exercises, you have declared and initialized vectors, and you have also accessed vector elements. In order to make full use of vectors in your code though, you will need to be able to add additional elements to them. Have a look at the following notebook for examples of how to do this.
+
+## Vector push_back
+
+* Now that you are able to process a string, you may want to store the results of the processing in a convenient container for later use. In the next exercise, you will store the streamed `int`s from each line of the board in a `vector<int>`. To do this, you will add the `int`s to the back of the vector, using the `vector` method `push_back`:
+
+```cpp
+#include <vector>
+#include <iostream>
+using std::vector;
+using std::cout;
+
+int main() {
+    // Initial Vector
+    vector v {1, 2, 3};
+    
+    // Print the contents of the vector
+    for (int i=0; i < v.size(); i++) {
+      cout << v[i] << "\n";
+    }
+    
+    // Push 4 to the back of the vector
+    v.push_back(4);
+
+    // Print the contents again
+    for (int i=0; i < v.size(); i++) {
+      cout << v[i] << "\n";
+    }
+    
+}
+```
+
+* In the previous exercises, you stored and printed the board as a vector<vector<int>>, where only two states were used for each cell: 0 and 1. This is a great way to get started, but as the program becomes more complicated, there will be more than two possible states for each cell. Additionally, it would be nice to print the board in a way that clearly indicates open areas and obstacles, just as the board is printed above.
+
+* To do this clearly in your code, you will learn about and use something called an enum. An enum, short for enumerator, is a way to define a type in C++ with values that are restricted to a fixed range. For an explanation and examples, see the notebook below.
+
+* ```cpp
+    #include <iostream>
+    using std::cout;
+
+    int main()
+    {
+        enum class Direction {kUp, kDown, kLeft, kRight};
+
+        Direction a = Direction::kUp;
+
+        switch (a) {
+        case Direction::kUp : cout << "Going up!" << "\n";
+            break;
+        case Direction::kDown : cout << "Going down!" << "\n";
+            break;
+        case Direction::kLeft : cout << "Going left!" << "\n";
+            break;
+        case Direction::kRight : cout << "Going right!" << "\n";
+            break;
+        }
+    }
+    ```
