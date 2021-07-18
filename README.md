@@ -117,6 +117,6 @@
 
         * In order to use Visual Studio Code's debugger with C++ files, you must install the free C/C++ extension.
             * Remember to compile your code with Symbols `-g` flag
-                * `clang++ -std=c++20 -g hello.cpp`
+                * `clang++ -std=c++20 -g hello.cpp -o a.out`
 
 ## Foundations
