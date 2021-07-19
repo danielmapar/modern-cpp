@@ -130,7 +130,7 @@
             * Remember to compile your code with Symbols `-g` flag
                 * `clang++ -std=c++20 -g hello.cpp -o a.out`
 
-## Foundations
+## Foundations / Introduction to the C++ Language
 
 * `#include <iostream>`
 
@@ -431,3 +431,10 @@ int main() {
         }
     }
     ```
+
+## Foundations / A* Search
+
+
+* Motion Planning
+    * The next videos and quizzes are taught by Sebastian Thrun (Udacity's former CEO) and they come from one of Udacity's first courses. The production style is a little different from what you will see in the rest of the course, but the content is very good. In these videos, Sebastian will discuss motion planning in robotics and provide the conceptual foundation for the project that you will build.
+
