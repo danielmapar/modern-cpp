@@ -589,3 +589,206 @@ const int delta[4][2]{{-1, 0}, {0, -1}, {1, 0}, {0, 1}};
 
 ## Foundations / Writing Multiple Files
 
+* Header files, or `.h` files, allow related function, method, and class **declarations** to be collected in one place. The corresponding **definitions** can then be placed in `.cpp` files. The compiler considers a header declaration a "promise" that the definition will be found later in the code, so if the compiler reaches a function that hasn't been defined yet, it can continue on compiling until the definition is found. This allows functions to be defined (and declared) in arbitrary order.
+
+* In the following code example, the functions are out of order, and the code will not compile. Try to fix this by rearranging the functions to be in the correct order.
+
+* ```cpp
+    #include <iostream>
+    using std::cout;
+
+    void OuterFunction(int i) 
+    {
+        InnerFunction(i);
+    }
+
+    void InnerFunction(int i) 
+    {
+        cout << "The value of the integer is: " << i << "\n";
+    }
+
+    int main() 
+    {
+        int a = 5;
+        OuterFunction(a);
+    }
+    ```
+
+* In the mini-project for the first half of the course, the instructions were very careful to indicate where each function should be placed, so you didn't run into the problem of functions being out of order.
+
+* Using a Header
+
+* One other way to solve the code problem above (without rearranging the functions) would have been to declare each function at the top of the file. A function **declaration** is much like the first line of a function **definition** - it contains the return type, function name, and input variable types. The details of the function definition are not needed for the declaration though.
+
+To avoid a single file from becomming cluttered with declarations and definitions for every function, it is customary to declare the functions in another file, called the header file. In C++, the header file will have filetype `.h`, and the contents of the header file must be included at the top of the `.cpp` file. See the following example for a refactoring of the code above into a header and a cpp file.
+
+* ```cpp
+    // The header file with just the function declarations.
+    // When you click the "Run Code" button, this file will
+    // be saved as header_example.h.
+    #ifndef HEADER_EXAMPLE_H
+    #define HEADER_EXAMPLE_H
+
+    void OuterFunction(int);
+    void InnerFunction(int);
+
+    #endif
+    ```
+* ```cpp
+    // The contents of header_example.h are included in 
+    // the corresponding .cpp file using quotes:
+    #include "header_example.h"
+
+    #include <iostream>
+    using std::cout;
+
+    void OuterFunction(int i) 
+    {
+        InnerFunction(i);
+    }
+
+    void InnerFunction(int i) 
+    {
+        cout << "The value of the integer is: " << i << "\n";
+    }
+
+    int main() 
+    {
+        int a = 5;
+        OuterFunction(a);
+    }
+    ```
+
+* Notice that the code from the first example was fixed without having to rearrange the functions! In the code above, you might also have noticed several other things:
+
+    * The function declarations in the header file don't need variable names, just variable types. You can put names in the declaration, however, and doing this often makes the code easier to read.
+
+    * The `#include` statement for the header used quotes " " around the file name, and not angle brackets <>. We have stored the header in the same directory as the .cpp file, and the quotes tell the preprocessor to look for the file in the same directory as the current file - not in the usual set of directories where libraries are typically stored.
+
+    Finally, there is a preprocessor directive:
+    ```cpp
+        #ifndef HEADER_EXAMPLE_H
+        #define HEADER_EXAMPLE_H
+    ```
+    
+    * at the top of the header, along with an #endif at the end. This is called an **"include guard"**. Since the header will be included into another file, and #include just pastes contents into a file, the include guard prevents the same file from being pasted multiple times into another file. This might happen if multiple files include the same header, and then are all included into the same main.cpp, for example. The ifndef checks if HEADER_EXAMPLE_H has not been defined in the file already. If it has not been defined yet, then it is defined with #define HEADER_EXAMPLE_H, and the rest of the header is used. If HEADER_EXAMPLE_H has already been defined, then the preprocessor does not enter the ifndef block. Note: There are other ways to do this. Another common way is to use an **#pragma** oncepreprocessor directive, but we won't cover that in detail here. See this Wikipedia article for examples.
+
+    * The addition of #include guards to a header file is one way to make that file idempotent. Another construct to combat double inclusion is #pragma once, which is non-standard but nearly universally supported among C and C++ compilers.
+
+### CMake and Make
+
+* In the previous notebook, you saw how example code could be split into multiple .h and .cpp files, and you used g++ to build all of the files together. For small projects with a handful of files, this works well. But what would happen if there were hundreds, or even thousands, of files in the project? You could type the names of the files at the command line each time, but there tools to make this easier.
+
+* Many larger C++ projects use a build system to manage all the files during the build process. The build system allows for large projects to be compiled with a few commands, and build systems are able to do this in an efficient way by only recompiling files that have been changed.
+
+* In this workspace you will learn about
+
+    * Object files: what actually happens when you run g++.
+    * How to use object files to compile only a single file at a time. If you have many files in a project, this will allow you can compile only files that have changed and need to be re-compiled.
+    * How to use cmake (and make), a build system which is popular in large C++ projects.CMake will simplify the process of building project and re-compiling only the changed files.
+
+* Object Files
+    * When you compile a project with g++, g++ actually performs several distinct tasks:
+
+    * The preprocessor runs and executes any statement beginning with a hash symbol: #, such as #include statements. This ensures all code is in the correct location and ready to compile.
+
+    * Each file in the source code is compiled into an "object file" (a .o file). Object files are platform-specific machine code that will be used to create an executable.
+
+    * The object files are "linked" together to make a single executable. In the examples you have seen so far, this executable is a.out, but you can specify whatever name you want.
+
+    * It is possible to have g++ perform each of the steps separately by using the -c flag. For example,
+
+        * `g++ -c main.cpp`
+    
+    * will produce a `main.o` file, and that file can be converted to an executable with
+
+        * `g++ main.o`
+    
+    * Generate all object files `g++ -c *.cpp` and the link them `g++ *.o`
+
+    * But what if you make changes to your code and you need to re-compile? In that case, you can compile only the file that you changed, and you can use the existing object files from the unchanged source files for linking.
+
+
+    * Compiling just the file you have changed saves time if there are many files and compilation takes a long time. However, the process above is tedious when using many files, especially if you don't remember which ones you have modified.
+
+    * For larger projects, it is helpful to use a build system which can compile exactly the right files for you and take care of linking.
+
+* CMake and Make
+
+    * CMake is an open-source, platform-independent build system. CMake uses text documents, denoted as CMakeLists.txt files, to manage build environments, like make. A comprehensive tutorial on CMake would require an entire course, but you can learn the basics of CMake here, so you'll be ready to use it in the upcoming projects.
+
+    * CMakeLists.txt
+
+        * CMakeList.txt files are simple text configuration files that tell CMake how to build your project. There can be multiple CMakeLists.txt files in a project. In fact, one CMakeList.txt file can be included in each directory of the project, indicating how the files in that directory should be built.
+
+        * These files can be used to specify the locations of necessary packages, set build flags and environment variables, specify build target names and locations, and other actions.
+
+    
+    * The first lines that you'll want in your CMakeLists.txt are lines that specifies the minimum versions of cmake and C++ required to build the project. Add the following lines to your CMakeLists.txt and save the file:
+
+
+        * ```
+            cmake_minimum_required(VERSION 3.5.1)
+            set(CMAKE_CXX_STANDARD 14)
+            ```
+        
+        * These lines set the minimum cmake version required to 3.5.1 and set the environment variable CMAKE_CXX_STANDARD so CMake uses C++ 14. On your own computer, if you have a recent g++ compiler, you could use C++ 17 instead.
+    
+    * CMake requires that we name the project, so you should choose a name for the project and then add the following line to CMakeLists.txt:
+
+        * `project(<your_project_name>)`
+    
+    * Next, we want to add an executable to this project. You can do that with the add_executable command by specifying the executable name, along with the locations of all the source files that you will need. CMake has the ability to automatically find source files in a directory, but for now, you can just specify each file needed:
+
+        * `add_executable(your_executable_name  path_to_file_1  path_to_file_2 ...)`
+    
+    * A typical CMake project will have a build directory in the same place as the top-level CMakeLists.txt. Make a build directory in the /home/workspace/cmake_example folder:
+
+    * ```bash
+        root@abc123defg:/home/workspace/cmake_example# mkdir build
+        root@abc123defg:/home/workspace/cmake_example# cd build
+        root@abc123defg:/home/workspace/cmake_example/build# cmake ..
+        root@abc123defg:/home/workspace/cmake_example/build# make
+        root@abc123defg:/home/workspace/cmake_example/build# ./your_executable_name
+        ```
+        * The first line directs the cmake command at the top-level CMakeLists.txt file with ... This command uses the CMakeLists.txt to configure the project and create a Makefile in the build directory.
+
+        * In the second line, make finds the Makefile and uses the instructions in the Makefile to build the project.
+
+        * Now that your project builds correctly, try modifying one of the files. When you are ready to run the project again, you'll only need to run the make command from the build folder, and only that file will be compiled again. Try it now!
+
+        * In general, CMake only needs to be run once for a project, unless you are changing build options (e.g. using different build flags or changing where you store your files).
+
+        * Make will be able to keep track of which files have changed and compile only those that need to be compiled before building.
+
+### References
+
+* You have seen references used previously, in both pass-by-reference for functions, and in a range-basedfor loop example that used references to modify a vector. As you write larger C++ programs, you will find references useful in a variety of situations. In this short notebook, you will see a few more examples of references to solidify your knowledge.
+
+* As mentioned previously, a reference is another name given to an existing variable. On the left hand side of any variable declaration, the & operator can be used to declare a reference.
+
+* ```cpp
+    #include <iostream>
+    using std::cout;
+
+    int main() 
+    {
+        int i = 1;
+        
+        // Declare a reference to i.
+        int& j = i;
+        cout << "The value of j is: " << j << "\n";
+        
+        // Change the value of i.
+        i = 5;
+        cout << "The value of i is changed to: " << i << "\n";
+        cout << "The value of j is now: " << j << "\n";
+        
+        // Change the value of the reference.
+        // Since reference is just another name for the variable,
+        // th
+        j = 7;
+        cout << "The value of j is now: " << j << "\n";
+        cout << "The value of i is changed to: " << i << "\n";
+    }
+    ```
