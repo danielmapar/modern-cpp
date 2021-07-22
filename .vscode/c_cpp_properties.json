@@ -1,6 +1,6 @@
 {
     "configurations": [
-        {
+        /*{
             "name": "Windows",
             "includePath": [
                 "C:/Program Files/LLVM/include/**",
@@ -11,8 +11,8 @@
             "cStandard": "c17",
             "cppStandard": "c++20",
             "intelliSenseMode": "windows-clang-x64"
-        }
-        /*{
+        }*/
+        {
             "name": "Mac",
             "includePath": [
                 "${workspaceFolder}/**"
@@ -25,7 +25,7 @@
             "cStandard": "c17",
             "cppStandard": "c++20",
             "intelliSenseMode": "macos-clang-x64"
-        }*/
+        }
     ],
     "version": 4
 }

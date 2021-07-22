@@ -438,3 +438,154 @@ int main() {
 * Motion Planning
     * The next videos and quizzes are taught by Sebastian Thrun (Udacity's former CEO) and they come from one of Udacity's first courses. The production style is a little different from what you will see in the rest of the course, but the content is very good. In these videos, Sebastian will discuss motion planning in robotics and provide the conceptual foundation for the project that you will build.
 
+
+* Pass by Reference
+    * In the previous exercises, you've written functions that accept and return various kinds of objects. However, in all of the functions you've written so far, the objects returned by the function are different from the objects provided to the function. In other words, when the function is called on some data, a copy of that data is made, and the function operates on a copy of the data instead of the original data. This is referred to as pass by value, since only a copy of the values of an object are passed to the function, and not the actual objects itself.
+
+    * In the following example, the _value_ of `int i` is passed to the function `MultiplyByTwo`. Look carefully at the code and try to guess what the output will be before you execute it. When you are finished executing, click the button for an explanation.
+
+    * ```cpp
+        #include <iostream>
+        using std::cout;
+
+
+        int MultiplyByTwo(int i) {
+            i = 2*i;
+            return i;
+        }
+
+        int main() {
+            int a = 5;
+            cout << "The int a equals: " << a << "\n";
+            int b = MultiplyByTwo(a);
+            cout << "The int b equals: " << b << "\n";
+            cout << "The int a still equals: " << a << "\n";
+        }
+        ```
+    * In the code above, `a` is passed by value to the function, so the variable `a` is not affected by what happens inside the function.
+
+    * But what if we wanted to change the value of `a` itself? For example, it might be that the variable you are passing into a function maintains some state in the program, and you want to write the function to update that state. 
+
+    * It turns out, it is possible to modify `a` from within the function. To do this, you must pass a _reference_ to the variable `a`, instead of the _value_ of `a`. In C++, _a reference is just an alternative name for the same variable_.
+
+    * To pass by reference, you simply need to add an ampersand `&` before the variable in the function declaration. Try the code below to see how this works:
+
+    * ```cpp
+        #include <iostream>
+        using std::cout;
+
+
+        int MultiplyByTwo(int &i) {
+            i = 2*i;
+            return i;
+        }
+
+        int main() {
+            int a = 5;
+            cout << "The int a equals: " << a << "\n";
+            int b = MultiplyByTwo(a);
+            cout << "The int b equals: " << b << "\n";
+            cout << "The int a now equals: " << a << "\n";
+        }
+        ```
+    
+    * In the code above, `a` is passed by reference to the function `MultiplyByTwo` since the argument to `MultiplyByTwo` is a reference: `&i`. This means that `i` is becomes another name for whatever variable that is passed into the function. When the function changes the value of `i`, then the value of `a` is changed as well.
+
+    * ```cpp
+        #include <iostream>
+        #include <string>
+        using std::cout;
+        using std::string;
+
+
+        void DoubleString(string value) {
+            // Concatentate the string with a space and itself.
+            value = value + " " + value;
+        }
+
+        int main() {
+            string s = "Hello";
+            cout << "The string s is: " << s << "\n";
+            DoubleString(s);
+            cout << "The string s is now: " << s << "\n";
+        }
+        ```
+
+### Constants 
+
+* C++ supports two notions of immutability:
+
+* `const`: meaning roughly " I promise not to change this value."...The compiler enforces the promise made by `const`....
+* `constexpr`: meaning roughly "to be evaluated at compile time." This is used primarily to specify constants...
+
+* ```cpp
+    #include <iostream>
+
+    int main()
+    {
+        int i;
+        std::cout << "Enter an integer value for i: ";
+        std::cin >> i;
+        const int j = i * 2;  // "j can only be evaluated at run time."
+                            // "But I promise not to change it after it is initialized."
+        
+        constexpr int k = 3;  // "k, in contrast, can be evaluated at compile time."
+        
+        std::cout << "j = " << j << "\n";
+        std::cout << "k = " << k << "\n";
+    }
+    ```
+
+* The major difference between `const` and `constexpr`, though, is that `constexpr` must be evaluated at compile time.
+
+* The compiler will catch a `constexpr` variable that cannot be evaluated at compile time.
+
+* ```cpp
+    #include <iostream>
+
+    int main()
+    {
+        int i;
+        std::cout << "Enter an integer value for i: ";
+        std::cin >> i;
+        constexpr int j = i * 2;  // "j can only be evaluated at run time."
+                                // "constexpr must be evaluated at compile time."
+                                // "So this code will produce a compilation error."
+    }
+    ```
+
+* A common usage of `const` is to guard against accidentally changing a variable, especially when it is passed-by-reference as a function argument.
+
+* ```cpp
+    #include <iostream>
+    #include <vector>
+
+    int sum(const std::vector<int> &v)
+    {
+        int sum = 0;
+        for(int i : v)
+            sum += i;
+        return sum;
+    }
+
+    int main()
+    {
+        std::vector<int> v {0, 1, 2, 3, 4};
+        std::cout << sum(v) << "\n";
+    }
+    ```
+
+### Arrays
+
+* In the previous exercise, we included an array of directional deltas for convenience:
+
+```cpp
+// directional deltas
+const int delta[4][2]{{-1, 0}, {0, -1}, {1, 0}, {0, 1}};
+```
+* Arrays are a lower level data structure than vectors, and can be slightly more efficient, in terms of memory and element access. However, this efficiency comes with a price. Unlike vectors, which can be extended with more elements, arrays have a fixed length. Additionally, arrays may require careful memory management, depending how they are used.
+
+* The example in the project code is a good use case for an array, as it was not intended to be changed during the execution of the program. However, a vector would have worked there as well.
+
+## Foundations / Writing Multiple Files
+
