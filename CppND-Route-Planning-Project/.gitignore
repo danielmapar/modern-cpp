@@ -1,0 +1,10 @@
+*.swp
+*.osm
+!map.osm
+*.o
+draw.cpp
+test.cpp
+build/
+bin/
+lib/
+.github/**
