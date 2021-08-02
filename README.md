@@ -981,3 +981,484 @@ To avoid a single file from becomming cluttered with declarations and definition
 * References are generally easier and safer than pointers. As a decent rule of thumb, references should be used in place of pointers when possible.
 
 * However, there are times when it is not possible to use references. One example is object initialization. You might like one object to store a reference to another object. However, if the other object is not yet available when the first object is created, then the first object will need to use a pointer, not a reference, since a reference cannot be null. The reference could only be initialized once the other object is created.
+
+### Maps
+
+* So far in this course you have seen container data structures, like the vector and the array. Additionally, you have used classes in your code for this project. Container data structures are fantastic for storing ordered data, and classes are useful for grouping related data and functions together, but neither of these data structures is optimal for storing associated data.
+
+* A map (alternatively hash table, hash map, or dictionary) is a data structure that uses key/value pairs to store data, and provides efficient lookup and insertion of the data. The name "dictionary" should provide an excellent idea of how these work, since a dictionary is a real life example of a map. Here is a slightly edited entry from www.dictionary.com defining the word "word":
+
+    * word
+
+        * a unit of language, consisting of one or more spoken sounds or their written representation, that functions as a principal carrier of meaning.
+        * speech or talk: to express one's emotion in words.
+        * a short talk or conversation: "Marston, I'd like a word with you."
+        * an expression or utterance: a word of warning.
+
+* In the following notebook, you will learn how to use an unordered_map, which is the C++ standard library implementation of a map. Although C++ has several different implementations of map data structures which are similar, unordered_map is the structure that you will use in your project.
+
+* In the cell below, we have created a hash table (unordered_map) to store the data from the example above. To create an unordered_map in C++, you must include the <unordered_map> header, and the sytnax for declaring an unordered_map is as follows:
+
+*  `unordered_map <key_type, value_type> variable_name;`
+
+* In the code below, we check if the key is in the unordered_map using the `.find()` method. If the key does not exist in the map, then `.find()` returns an `unordered_map::end()` type. Otherwise, .find() returns a C++ iterator, which is a pointer that points to the beginning of the iterable key-value pair.
+
+* We haven't covered iterators in this course, and you won't need them for this project, but they are a lot like pointers that can "iterate" forward or backward through a range.
+
+* ```cpp
+    #include <iostream>
+    #include <vector>
+    #include <unordered_map>
+    #include <string>
+    using std::vector;
+    using std::cout;
+    using std::unordered_map;
+    using std::string;
+
+
+    int main() {
+        // Create strings to use in the hash table.
+        string key = "word";
+        string def_1 = "a unit of language, consisting of one or more spoken sounds or their written representation, that functions as a principal carrier of meaning";
+        string def_2 = "speech or talk: to express one's emotion in words";
+        string def_3 = "a short talk or conversation: 'Marston, I'd like a word with you.'";
+        string def_4 = "an expression or utterance: a word of warning";
+        unordered_map <string, vector<string>> my_dictionary;
+
+        // Check if key is in the hash table.
+        if (my_dictionary.find(key) == my_dictionary.end()) {
+            cout << "The key 'word' is not in the dictionary." << "\n";
+            cout << "Inserting a key-value pair into the dictionary." << "\n\n";
+            // Set the value for the key.
+            my_dictionary[key] = vector<string> {def_1, def_2, def_3, def_4};
+        }
+
+        // The key should now be in the hash table. You can access the
+        // value corresponding to the key with square brackets [].
+        // Here, the value my_dictionary[key] is a vector of strings.
+        // We iterate over the vector and print the strings.
+        cout << key << ": \n";
+        auto definitions = my_dictionary[key];
+        for (string definition : definitions) {
+            cout << definition << "\n";
+        }
+    }
+    ```
+
+    * ```cpp
+        #include<unordered_map>
+        #include<string>
+        #include<iostream>
+        #include<vector>
+        using std::unordered_map;
+        using std::string;
+        using std::cout;
+        using std::vector;
+
+        // Write your program here.
+        int main()
+        {
+            unordered_map<int, string> IDD_codes {{972, "Israel"}, {93, "Afghanistan"}, {355, "Albania"}, {213, "Algeria"}, {376, "Andorra"}, {244, "Angola"}, {54, "Argentina"}, {374, "Armenia"}, {297, "Aruba"}, {61, "Australia"}, {43, "Austria"}, {994, "Azerbaijan"}, {973, "Bahrain"}, {880, "Bangladesh"}, {375, "Belarus"}, {32, "Belgium"}, {501, "Belize"}, {229, "Benin"}, {975, "Bhutan"}, {387, "Bosnia and Herzegovina"}, {267, "Botswana"}, {55, "Brazil"}, {246, "British Indian Ocean Territory"}, {359, "Bulgaria"}, {226, "Burkina Faso"}, {257, "Burundi"}, {855, "Cambodia"}, {237, "Cameroon"}, {1, "Canada"}, {238, "Cape Verde"}, {236, "Central African Republic"}, {235, "Chad"}, {56, "Chile"}, {86, "China"}, {61, "Christmas Island"}, {57, "Colombia"}, {269, "Comoros"}, {242, "Congo"}, {682, "Cook Islands"}, {506, "Costa Rica"}, {385, "Croatia"}, {53, "Cuba"}, {537, "Cyprus"}, {420, "Czech Republic"}, {45, "Denmark"}, {253, "Djibouti"}, {593, "Ecuador"}, {20, "Egypt"}, {503, "El Salvador"}, {240, "Equatorial Guinea"}, {291, "Eritrea"}, {372, "Estonia"}, {251, "Ethiopia"}, {298, "Faroe Islands"}, {679, "Fiji"}, {358, "Finland"}, {33, "France"}, {594, "French Guiana"}, {689, "French Polynesia"}, {241, "Gabon"}, {220, "Gambia"}, {995, "Georgia"}, {49, "Germany"}, {233, "Ghana"}, {350, "Gibraltar"}, {30, "Greece"}, {299, "Greenland"}, {590, "Guadeloupe"}, {502, "Guatemala"}, {224, "Guinea"}, {245, "Guinea-Bissau"}, {595, "Guyana"}, {509, "Haiti"}, {504, "Honduras"}, {36, "Hungary"}, {354, "Iceland"}, {91, "India"}, {62, "Indonesia"}, {964, "Iraq"}, {353, "Ireland"}, {972, "Israel"}, {39, "Italy"}, {81, "Japan"}, {962, "Jordan"}, {254, "Kenya"}, {686, "Kiribati"}, {965, "Kuwait"}, {996, "Kyrgyzstan"}, {371, "Latvia"}, {961, "Lebanon"}, {266, "Lesotho"}, {231, "Liberia"}, {423, "Liechtenstein"}, {370, "Lithuania"}, {352, "Luxembourg"}, {261, "Madagascar"}, {265, "Malawi"}, {60, "Malaysia"}, {223, "Mali"}, {356, "Malta"}, {692, "Marshall Islands"}, {596, "Martinique"}, {222, "Mauritania"}, {230, "Mauritius"}, {262, "Mayotte"}, {52, "Mexico"}, {377, "Monaco"}, {976, "Mongolia"}, {382, "Montenegro"}, {212, "Morocco"}, {95, "Myanmar"}, {264, "Namibia"}, {674, "Nauru"}, {977, "Nepal"}, {31, "Netherlands"}, {599, "Netherlands Antilles"}, {687, "New Caledonia"}, {64, "New Zealand"}, {505, "Nicaragua"}, {227, "Niger"}, {234, "Nigeria"}, {683, "Niue"}, {672, "Norfolk Island"}, {47, "Norway"}, {968, "Oman"}, {92, "Pakistan"}, {680, "Palau"}, {507, "Panama"}, {675, "Papua New Guinea"}, {595, "Paraguay"}, {51, "Peru"}, {63, "Philippines"}, {48, "Poland"}, {351, "Portugal"}, {974, "Qatar"}, {40, "Romania"}, {250, "Rwanda"}, {685, "Samoa"}, {378, "San Marino"}, {966, "Saudi Arabia"}, {221, "Senegal"}, {381, "Serbia"}, {248, "Seychelles"}, {232, "Sierra Leone"}, {65, "Singapore"}, {421, "Slovakia"}, {386, "Slovenia"}, {677, "Solomon Islands"}, {27, "South Africa"}, {500, "South Georgia and the South Sandwich Islands"}, {34, "Spain"}, {94, "Sri Lanka"}, {249, "Sudan"}, {597, "Suriname"}, {268, "Swaziland"}, {46, "Sweden"}, {41, "Switzerland"}, {992, "Tajikistan"}, {66, "Thailand"}, {228, "Togo"}, {690, "Tokelau"}, {676, "Tonga"}, {216, "Tunisia"}, {90, "Turkey"}, {993, "Turkmenistan"}, {688, "Tuvalu"}, {256, "Uganda"}, {380, "Ukraine"}, {971, "United Arab Emirates"}, {44, "United Kingdom"}, {1, "United States"}, {598, "Uruguay"}, {998, "Uzbekistan"}, {678, "Vanuatu"}, {681, "Wallis and Futuna"}, {967, "Yemen"}, {260, "Zambia"}, {263, "Zimbabwe"}, {591, "Bolivia, Plurinational State of"}, {673, "Brunei Darussalam"}, {61, "Cocos (Keeling) Islands"}, {243, "Congo, The Democratic Republic of the"}, {225, "Cote dIvoire"}, {500, "Falkland Islands (Malvinas)"}, {44, "Guernsey"}, {379, "Holy See (Vatican City State)"}, {852, "Hong Kong"}, {98, "Iran, Islamic Republic of"}, {44, "Isle of Man"}, {44, "Jersey"}, {850, "Korea, Democratic People's Republic of"}, {82, "Korea, Republic of"}, {856, "Lao People's Democratic Republic"}, {218, "Libyan Arab Jamahiriya"}, {853, "Macao"}, {389, "Macedonia, The Former Yugoslav Republic of"}, {691, "Micronesia, Federated States of"}, {373, "Moldova, Republic of"}, {258, "Mozambique"}, {970, "Palestinian Territory, Occupied"}, {872, "Pitcairn"}, {262, "Réunion"}, {7, "Russia"}, {590, "Saint Barthélemy"}, {290, "Saint Helena, Ascension and Tristan Da Cunha"}, {590, "Saint Martin"}, {508, "Saint Pierre and Miquelon"}, {239, "Sao Tome and Principe"}, {252, "Somalia"}, {47, "Svalbard and Jan Mayen"}, {963, "Syrian Arab Republic"}, {886, "Taiwan, Province of China"}, {255, "Tanzania, United Republic of"}, {670, "Timor-Leste"}, {58, "Venezuela, Bolivarian Republic of"}, {84, "Viet Nam"}};
+            if (IDD_codes.find(960) == IDD_codes.end()) {
+                IDD_codes[960] = "Maldives";
+            }
+            
+            vector<int> my_codes {1, 55, 960};
+            for (int code : my_codes) {
+                cout << code << ": " << IDD_codes[code] << "\n";
+            }
+        }
+        ```
+
+### Classes and Object-Oriented Programming
+
+* If you are taking this course, you have probably used object-oriented programming (OOP) previously in another language. If it's been a while since you've used OOP, OOP is a style of coding that collects related data (object attributes) and functions (object methods) together to form a single data structure, called an object. This allows that collection of attributes and methods to be used repeatedly in your program without code repetition.
+
+* In C++ the attributes and methods that make up an object are specified in a code class, and each object in the program is an instance of that class.
+
+* This concept is intended to provide you with the basic syntax for writing classes in C++. In this Foundations course, you will not need to write your own classes for the project, but you will be modifying existing classes in the code. You will be writing your own classes in the next course of this Nanodegree: Object-Oriented Programming.
+
+* In the next cell, the code above has been rewritten with a `Car` class.
+
+* ```cpp
+    #include <iostream>
+    #include <string>
+    using std::string;
+    using std::cout;
+
+    // The Car class
+    class Car {
+    public:
+        // Method to print data.
+        void PrintCarData() 
+        {
+            cout << "The distance that the " << color << " car " << number << " has traveled is: " << distance << "\n";
+        }
+        
+        // Method to increment the distance travelled.
+        void IncrementDistance() 
+        {
+            distance++;
+        }
+        
+        // Class/object attributes
+        string color;
+        int distance = 0;
+        int number;
+    };
+
+    int main() 
+    {
+        // Create class instances for each car.
+        Car car_1, car_2, car_3;
+
+        // Set each instance's color.
+        car_1.color = "green";
+        car_2.color = "red";
+        car_3.color = "blue";
+
+        // Set each instance's number.
+        car_1.number = 1;
+        car_2.number = 2;
+        car_3.number = 3;
+
+        // Increment car_1's position by 1.
+        car_1.IncrementDistance();
+
+        // Print out the position and color of each car.
+        car_1.PrintCarData();
+        car_2.PrintCarData();
+        car_3.PrintCarData();
+
+    }
+    ```
+
+* This looks ok, and you have reduced the number of variables in main, so you might see how this could be more organized going forward. However, there is now a lot more code than you started with, and the main doesn't seem much more organzied. The code above still sets the attributes for each car after the car has been created.
+
+* The best way to fix this is to add a constructor to the Car class. The constructor allows you to instantiate new objects with the data that you want. In the next code cell, we have added a constructor for Car that allows the number and color to be passed in. This means that each Car object can be created with those variables.
+
+* ```cpp
+    #include <iostream>
+    #include <string>
+    using std::string;
+    using std::cout;
+
+    class Car {
+    public:
+        void PrintCarData() 
+        {
+            cout << "The distance that the " << color << " car " << number << " has traveled is: " << distance << "\n";
+        }
+
+        void IncrementDistance() 
+        {
+            distance++;
+        }
+        
+        // Adding a constructor here:
+        Car(string c, int n) 
+        {
+            // Setting the class attributes with
+            // The values passed into the constructor.
+            color = c;
+            number = n;
+        }
+        
+        string color;
+        int distance = 0;
+        int number;
+    };
+
+    int main() 
+    {
+        // Create class instances for each car.
+        Car car_1 = Car("green", 1);
+        Car car_2 = Car("red", 2);
+        Car car_3 = Car("blue", 3);
+
+        // Increment car_1's position by 1.
+        car_1.IncrementDistance();
+
+        // Print out the position and color of each car.
+        car_1.PrintCarData();
+        car_2.PrintCarData();
+        car_3.PrintCarData();
+    }
+    ```
+
+* This is now beginning to look better. The main is more organized than when we first started, although there is a little more code overall to accomodate the class definition. At this point, you might want to separate your class definition into it's own .h and .cpp files. We'll do that in the next concept!
+
+### Inheritance
+
+* It is possible for a class to use methods and attributes from another class using class inheritance. For example, if you wanted to make a Sedan class with additional attributes or methods not found in the generic Car class, you could create a Sedan class that inherited from the Car by using the colon notation:
+
+* ```cpp
+    class Sedan : public Car {
+        // Sedan class declarations/definitions here.
+    };
+    ```
+
+* By doing this, each Sedan class instance will have access to any of the public methods and attributes of Car. In the code above, these areIncrementDistance() and PrintCarData(). You can add additional features to the Sedan class as well. In the example above, Car is often referred to as the parent class, and Sedan as the child or derived class.
+
+* A full discussion of inheritance is beyond the scope of this course, but you will encounter it briefly in the project code later. In the project code, the classes are set up to inherit from existing classes of an open source code project. You won't need to use inheritance otherwise, but keep in mind that your classes can use all of the public methods and attributes of their parent class.
+
+### Putting the Class Definitions into Separate Files
+
+* In the previous concept, you saw how to create a `Car` classs and use a constructor. At the end of that concept, your code looked like this:
+
+* ```cpp
+    #include <iostream>
+    #include <string>
+    using std::string;
+    using std::cout;
+
+    class Car {
+    public:
+        void PrintCarData() 
+        {
+            cout << "The distance that the " << color << " car " << number << " has traveled is: " << distance << "\n";
+        }
+
+        void IncrementDistance() 
+        {
+            distance++;
+        }
+        
+        // Adding a constructor here:
+        Car(string c, int n) 
+        {
+            // Setting the class attributes with
+            // The values passed into the constructor.
+            color = c;
+            number = n;
+        }
+        
+        string color;
+        int distance = 0;
+        int number;
+    };
+
+    int main() 
+    {
+        // Create class instances for each car.
+        Car car_1 = Car("green", 1);
+        Car car_2 = Car("red", 2);
+        Car car_3 = Car("blue", 3);
+
+        // Increment car_1's position by 1.
+        car_1.IncrementDistance();
+
+        // Print out the position and color of each car.
+        car_1.PrintCarData();
+        car_2.PrintCarData();
+        car_3.PrintCarData();
+
+    }
+    ```
+
+* If you were planning to build a larger program, at this point it might be good to put your class definition and function declarations into a separate file. Just as when we discussed header files before, putting the class definition into a separate header helps to organize your code, and prevents problems with trying to use class objects before the class is defined.
+
+* There are two things to note in the code below. 
+
+1. When the class methods are defined outside the class, the _scope resolution operator_ `::` must be used to indicate which class the method belongs to. For example, in the definition of the `PrintCarData` method you see:
+  
+* ```cpp
+    void Car::PrintCarData()
+    ```
+* This prevents any compiler issues if there are are two classes with methods that have the same name.
+
+2. We have changed how the constructor initializes the variables. Instead of the previous constructor:
+    * ```cpp
+        Car(string c, int n) {
+            color = c; 
+            number = n;
+        }
+        ```
+* the constructor now uses an [_initializer list_](https://en.cppreference.com/w/cpp/language/initializer_list):
+    * ```cpp
+        Car(string c, int n) : color(c), number(n) {}
+        ```
+
+* Here, the class members are initialized before the body of the constructor (which is now empty). Initializer lists are a quick way to initialize many class attributes in the constructor. Additionally, the compiler treats attributes initialized in the list slightly differently than if they are initialized in the constructor body. For reasons beyond the scope of this course, if a class attribute is a reference, it must be initialized using an initializer list.
+  
+3. Variables that don't need to be visible outside of the class are set as `private`. This means that they can not be accessed outside of the class, which [prevents them from being accidentally changed](https://github.com/isocpp/CppCoreGuidelines/blob/master/CppCoreGuidelines.md#Rc-private).
+
+Check out the cells below to see this code in practice. In this code, we have separated the class into declarations and definitions, with declarations being in the `.h` file and definitions being in `.cpp`. Note that only the `.h` file needs to be included in any other file where the definitions are used.
+
+* `car.h`
+* ```cpp
+    #ifndef CAR_H
+    #define CAR_H
+
+    #include <string>
+    using std::string;
+    using std::cout;
+
+    class Car {
+    public:
+        void PrintCarData();
+        void IncrementDistance();
+        
+        // Using a constructor list in the constructor:
+        Car(string c, int n) : color(c), number(n) {}
+    
+    // The variables do not need to be accessed outside of
+    // functions from this class, so we can set them to private.
+    private:
+        string color;
+        int distance = 0;
+        int number;
+    };
+
+    #endif
+    ```
+
+* `car.cpp`
+* ```cpp
+    #include <iostream>
+    #include "car.h"
+
+    // Method definitions for the Car class.
+    void Car::PrintCarData() 
+    {
+        cout << "The distance that the " << color << " car " << number << " has traveled is: " << distance << "\n";
+    }
+
+    void Car::IncrementDistance() 
+    {
+        distance++;
+    }
+    ```
+
+* `main.cpp`
+* ```cpp
+    #include <iostream>
+    #include <string>
+    #include "car.h"
+    using std::string;
+    using std::cout;
+
+    int main() 
+    {
+        // Create class instances for each car.
+        Car car_1 = Car("green", 1);
+        Car car_2 = Car("red", 2);
+        Car car_3 = Car("blue", 3);
+
+        // Increment car_1's position by 1.
+        car_1.IncrementDistance();
+
+        // Print out the position and color of each car.
+        car_1.PrintCarData();
+        car_2.PrintCarData();
+        car_3.PrintCarData();
+
+    }
+    ```
+
+* There is a lot going on in the code to unpack, including the `new` keyword and the `->` operator. The arrow operator `->` is used to simultaneously
+
+    * dereference a pointer to an object and
+    * access an attribute or method.
+
+* For example, in the code below, cp is a pointer to a Car object, and the following two are equivalent:
+
+* ```cpp
+        // Simultaneously dereference the pointer and 
+        // access IncrementDistance().
+        cp->IncrementDistance();
+
+        // Dereference the pointer using *, then 
+        // access IncrementDistance() with traditional 
+        // dot notation.
+        (*cp).IncrementDistance();
+    ```
+
+* The new operator allocates memory on the "heap" for a new Car. In general, this memory must be manually managed (deallocated) to avoid memory leaks in your program. Memory management is the primary focus of one of the later courses in this Nanodegree program, so we won't go into greater depth about the difference between `stack` and `heap` in this lesson.
+
+* ```cpp
+    #include <iostream>
+    #include <string>
+    #include <vector>
+    #include "car.h"
+    using std::string;
+    using std::cout;
+    using std::vector;
+
+    int main() {
+        // Create an empty vector of pointers to Cars 
+        // and a null pointer to a car.
+        vector<Car*> car_vect;
+        Car* cp = nullptr;
+        
+        // The vector of colors for the cars:
+        vector<string> colors {"red", "blue", "green"};
+
+        // Create 100 cars with different colors and 
+        // push pointers to each of those cars into the vector.
+        for (int i=0; i < 100; i++) {;
+            cp = new Car(colors[i%3], i+1);
+            car_vect.push_back(cp);
+        }
+
+        // Move each car forward by 1.
+        for (Car* cp: car_vect) {
+            cp->IncrementDistance();
+        }
+
+        // Print data about each car.
+        for (Car* cp: car_vect) {
+            cp->PrintCarData();
+        }
+    }
+    ```
+
+### This Pointer
+
+When working with classes it is often helpful to be able to refer to the current class instance or object. For example, given the following Car class from a previous lesson, the IncrementDistance() method implicitly refers to the current Car instance's distance attribute:
+
+* ```cpp
+    // The Car class
+    class Car {
+    public:
+        // Method to print data.
+        void PrintCarData() {
+            cout << "The distance that the " << color << " car " << number << " has traveled is: " << distance << "\n";
+        }
+
+        // Method to increment the distance travelled.
+        void IncrementDistance() {
+            distance++;
+        }
+
+        // Class/object attributes
+        string color;
+        int distance = 0;
+        int number;
+    };
+    ```
+
+* It is possible to make this explicit in C++ by using the this pointer, which points to the current class instance. Using this can sometimes be helpful to add clarity to more complicated code:
+
+* ```cpp
+    // The Car class
+    class Car {
+    public:
+        // Method to print data.
+        void PrintCarData() {
+            cout << "The distance that the " << this->color << " car " << this->number << " has traveled is: " << this->distance << "\n";
+        }
+
+        // Method to increment the distance travelled.
+        void IncrementDistance() {
+            this->distance++;
+        }
+
+        // Class/object attributes
+        string color;
+        int distance = 0;
+        int number;
+    };
+    ```
+
+* Note: you may see this used in some code in the remainder of the course.
