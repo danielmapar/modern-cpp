@@ -1731,12 +1731,335 @@ When working with classes it is often helpful to be able to refer to the current
 
         * This is possible because of the default constructor. The compiler will define a default constructor, which accepts no arguments, for any class or structure that does not contain an explicitly-defined constructor.
 
-    * Scope Resolution
+* Scope Resolution
 
-        *  C++ allows different identifiers (variable and function names) to have the same name, as long as they have different scope. For example, two different functions can each declare the variable int i, because each variable only exists within the scope of its parent function.
+    *  C++ allows different identifiers (variable and function names) to have the same name, as long as they have different scope. For example, two different functions can each declare the variable int i, because each variable only exists within the scope of its parent function.
 
-        * In some cases, scopes can overlap, in which case the compiler may need assistance in determining which identifier the programmer means to use. The process of determining which identifier to use is called "scope resolution".
+    * In some cases, scopes can overlap, in which case the compiler may need assistance in determining which identifier the programmer means to use. The process of determining which identifier to use is called "scope resolution".
 
-        * Scope Resultion Operator
+    * Scope Resultion Operator
 
-            * `::` is the scope resolution operator. We can use this operator to specify which namespace or class to search in order to resolve an identifier.
+        * `::` is the scope resolution operator. We can use this operator to specify which namespace or class to search in order to resolve an identifier.
+
+        * ```cpp
+            Person::move(); \\ Call the move the function that is a member of the Person class.
+            std::map m; \\ Initialize the map container from the C++ Standard Library.  
+            ```
+    
+    * Class
+        * Each class provides its own scope. We can use the scope resolution operator to specify identifiers from a class.
+
+        * This becomes particularly useful if we want to separate class declaration from class definition.
+
+        * ```cpp
+            class Date {
+                public:
+                    int Day() const { return day; }
+                    void Day(int day);  // Declare member function Date::Day().
+                    int Month() const { return month; }
+                    void Month(int month) {
+                        if (month >= 1 && month <= 12) Date::month = month;
+                    }
+                    int Year() const { return year; }
+                    void Year(int year) { Date::year = year; }
+
+                private:
+                    int day{1};
+                    int month{1};
+                    int year{0};
+            };
+
+            // Define member function Date::Day().
+            void Date::Day(int day) {
+            if (day >= 1 && day <= 31) Date::day = day;
+            }
+            ```
+    
+    * Namespaces
+
+        * Namespaces allow programmers to group logically related variables and functions together. Namespaces also help to avoid conflicts between to variables that have the same name in different parts of a program.
+
+        * ```cpp
+            namespace English {
+                void Hello() { std::cout << "Hello, World!\n"; }
+            }  // namespace English
+
+            namespace Spanish {
+                void Hello() { std::cout << "Hola, Mundo!\n"; }
+            }  // namespace Spanish
+
+            int main() {
+            English::Hello();
+            Spanish::Hello();
+            }
+            ```
+        
+        * In this example, we have two different `void Hello()` functions. If we put both of these functions in the same namespace, they would conflict and the program would not compile. However, by declaring each of these functions in a separate namespace, they are able to co-exist. Furthermore, we can specify which function to call by prefixing Hello() with the appropriate namespace, followed by the :: operator.
+
+        * ```cpp
+            #include <cassert>
+
+            class Date {
+                public:
+                    int Day() { return day; }
+                    void Day(int day);
+                    int Month() { return month; }
+                    void Month(int month);
+                    int Year() { return year; }
+                    void Year(int year);
+
+                private:
+                    int day{1};
+                    int month{1};
+                    int year{0};
+            };
+
+            // TODO: Define Date::Day(int day)
+            void Date::Day(int day) {
+                if(day >= 1 && day <= 31)
+                    Date::day = day;
+            }
+
+            // TODO: Define Date::Month(int month)
+            void Date::Month(int month) {
+                if(month >= 1 && month <= 12)
+                    Date::month = month;
+            }
+
+            // TODO: Define Date::Year(int year)
+            void Date::Year(int year) { Date::year = year; }
+
+            // Test in main
+            int main() {
+            Date date;
+            date.Day(29);
+            date.Month(8);
+            date.Year(1981);
+            assert(date.Day() == 29);
+            assert(date.Month() == 8);
+            assert(date.Year() == 1981);
+            }
+            ```
+
+* Initializer List
+
+    * Initializer lists initialize member variables to specific values, just before the class constructor runs. This initialization ensures that class members are automatically initialized when an instance of the class is created.
+
+    * ```cpp
+        Date::Date(int day, int month, int year) : year_(y) {
+            Day(day);
+            Month(month);
+        }
+        ```
+    
+    * In this example, the member value year is initialized through the initializer list, while day and month are assigned from within the constructor. Assigning day and month allows us to apply the invariants set in the mutator.
+
+    * In general, prefer initialization to assignment. Initialization sets the value as soon as the object exists, whereas assignment sets the value only after the object comes into being. This means that assignment creates and opportunity to accidentally use a variable before its value is set.
+
+    * In fact, initialization lists ensure that member variables are initialized before the object is created. **This is why class member variables can be declared const**, but only if the member variable is initialized through an initialization list. Trying to initialize a const class member within the body of the constructor will not work.
+
+    * ```cpp
+        #include <assert.h>
+        #include <string>
+
+        // TODO: Define class Person
+        struct Person {
+            // TODO: Define a public constructor with an initialization list
+            Person(std::string name) : name(name) {}
+            // TODO: Define a public member variable: name
+            std::string name;  
+        };
+
+        // Test
+        int main() {
+            Person alice("Alice");
+            Person bob("Bob");
+            assert(alice.name != bob.name);
+        }
+        ```
+
+    * Initializer lists exist for a number of reasons. First, the compiler can optimize initialization faster from an initialization list than from within the constructor.
+
+    * A second reason is a bit of a technical paradox. If you have a const class attribute, you can only initialize it using an initialization list. Otherwise, you would violate the const keyword simply by initializing the member in the constructor!
+
+    * The third reason is that attributes defined as references must use initialization lists.
+
+    * ```cpp
+        #include <assert.h>
+        #include <string>
+
+        struct Person {
+            public:
+            // TODO: Add an initialization list
+            Person(std::string const & n) : name(n) {}
+            std::string const name;
+        };
+
+        // Test
+        int main() {
+            Person alice("Alice");
+            Person bob("Bob");
+            assert(alice.name != bob.name);
+        }
+        ```
+    
+* Encapsulation
+
+    * Encapsulation is the grouping together of data and logic into a single unit. In object-oriented programming, classes encapsulate data and functions that operate on that data.
+
+    * This can be a delicate balance, because on the one hand we want to group together relevant data and functions, but on the hand we want to limit member functions to only those functions that need direct access to the representation of a class.
+
+    * In the context of a Date class, a function Date Tomorrow(Date const & date) probably does not need to be encapsulated as a class member. It can exist outside the Date class.
+
+    * However, a function that calculates the number of days in a month probably should be encapsulated with the class, because the class needs this function in order to operate correctly.
+
+    * ```cpp
+        #include <cassert>
+
+        class Date {
+        public:
+            Date(int day, int month, int year);
+            int Day() const { return day_; }
+            void Day(int day);
+            int Month() const { return month_; }
+            void Month(int month);
+            int Year() const { return year_; }
+            void Year(int year);
+
+        private:
+            bool LeapYear(int year) const;
+            int DaysInMonth(int month, int year) const;
+            int day_{1};
+            int month_{1};
+            int year_{0};
+        };
+
+        Date::Date(int day, int month, int year) {
+            Year(year);
+            Month(month);
+            Day(day);
+        }
+
+        bool Date::LeapYear(int year) const {
+            if(year % 4 != 0)
+                return false;
+            else if(year % 100 != 0)
+                return true;
+            else if(year % 400 != 0)
+                return false;
+            else
+                return true;
+        }
+
+        int Date::DaysInMonth(int month, int year) const {
+            if(month == 2)
+                return LeapYear(year) ? 29 : 28;
+            else if(month == 4 || month == 6 || month == 9 || month == 11)
+                return 30;
+            else
+                return 31;
+        }
+
+        void Date::Day(int day) {
+            if (day >= 1 && day <= DaysInMonth(Month(), Year()))
+                day_ = day;
+        }
+
+        void Date::Month(int month) {
+            if (month >= 1 && month <= 12)
+                month_ = month; 
+        }
+
+        void Date::Year(int year) { year_ = year; }
+
+        // Test
+        int main() {
+            Date date(29, 2, 2016);
+            assert(date.Day() == 29);
+            assert(date.Month() == 2);
+            assert(date.Year() == 2016);
+                
+            Date date2(29, 2, 2019);
+            assert(date2.Day() != 29);
+            assert(date2.Month() == 2);
+            assert(date2.Year() == 2019);
+        }
+        ```
+
+* Accessor Functions
+
+    * Accessor functions are public member functions that allow users to access an object's data, albeit indirectly.
+
+    * `const`
+
+    * Accessors should only retrieve data. They should not change the data stored in the object.
+
+    * The main role of the const specifier in accessor methods is to protect member data. When you specify a member function as const, the compiler will prohibit that function from changing any of the object's member data.
+
+    * ```cpp
+        #include <iostream>
+        #include <string>
+
+        class BankAccount
+        {
+        public:
+            int number;
+            std::string owner;
+            double funds;
+        };
+
+        int main(){
+            // TODO: instantiate and output a bank account
+            BankAccount account;
+            account.number = 123456789;
+            account.owner = "David Silver";
+            account.funds   = 1,000,000.01
+                
+            std::cout << "Account Information\n";
+            std::cout << "-------------------\n";
+            std::cout << "ID: " << account.number << "\n";
+            std::cout << "Owner: " << account.owner << "\n";
+            std::cout << "Funds: $" << account.funds << "\n";
+        }
+        ```
+
+* Mutator Functions
+
+    * ```cpp
+        #include <string>
+        #include <cstring>
+        #include <iostream>
+
+        class Car {
+            // TODO: Declare private attributes
+            private:
+                std::string _brand;
+                
+            // TODO: Declare getter and setter for brand
+            public:
+                void brand(char*);
+                std::string brand() const;
+                
+        };
+
+        // Define setters
+        void Car::brand(char* brand)
+        {
+            Car::_brand = brand;
+        }
+
+        // Define getters
+        std::string Car::brand() const
+        {
+            return _brand;
+        }
+
+        // Test in main()
+        int main() 
+        {
+            Car car;
+            char brand[] = "Peugeot";
+            car.brand(brand);
+            std::cout << car.brand() << "\n";   
+        }
+        ```
