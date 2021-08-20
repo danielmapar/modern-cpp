@@ -2063,3 +2063,61 @@ When working with classes it is often helpful to be able to refer to the current
             std::cout << car.brand() << "\n";   
         }
         ```
+
+* Abstraction
+
+    * Abstraction refers to the separation of a class's interface from the details of its implementation. The interface provides a way to interact with an object, while hiding the details and implementation of how the class works.
+
+    * Example
+
+        * The String() function within this Date class is an example of abstraction.
+
+        * ```cpp
+            class Date {
+                public:
+                ...
+                std::string String() const;
+                ...
+            };
+            ```
+
+        * The user is able to interact with the Date class through the String() function, but the user does not need to know about the implementation of either Date or String().
+
+        * For example, the user does not know, or need to know, that this object internally contains three int member variables. The user can just call the String() method to get data.
+
+        * If the designer of this class ever decides to change how the data is stored internally -- using a vector of ints instead of three separate ints, for example -- the user of the Date class will not need to know.
+
+* Static Members
+
+    * Class members can be declared `static`, which means that the member belongs to the entire class, instead of to a specific instance of the class. More specifically, a `static` member is created only once and then shared by all instances (i.e. objects) of the class. That means that if the static member gets changed, either by a user of the class or within a member function of the class itself, then all members of the class will see that change the next time they access the static member.
+
+    * Implementation
+
+        * `static` members are declared within their class (often in a header file) but in most cases they must be defined within the global scope. That's because memory is allocated for static variables immediately when the program begins, at the same time any global variables are initialized.
+
+        * Here is an example:
+
+        * ```cpp
+            #include <cassert>
+
+            class Foo {
+                public:
+                static int count;
+                Foo() { Foo::count += 1; }
+            };
+
+            int Foo::count{0};
+
+            int main() {
+                Foo f{};
+                assert(Foo::count == 1);
+            }
+            ```
+
+        * An exception to the global definition of `static` members is if such members can be marked as `constexpr`. In that case, the `static` member variable can be both declared and defined within the class definition:
+
+        * ```cpp
+            struct Kilometer {
+                static constexpr int meters{1000};
+            };
+            ```
