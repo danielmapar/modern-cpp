@@ -2121,3 +2121,456 @@ When working with classes it is often helpful to be able to refer to the current
                 static constexpr int meters{1000};
             };
             ```
+
+## Object-Oriented Programming / Advanced OOP
+
+* Inheritence
+
+    * In our everyday life, we tend to divide things into groups, based on their shared characteristics. Here are some groups that you have probably used yourself: electronics, tools, vehicles, or plants.
+
+    * Sometimes these groups have hierarchies. For example, computers and smartphones are both types of electronics, but computers and smartphones are also groups in and of themselves. You can imagine a tree with "electronics" at the top, and "computers" and "smartphones" each as children of the "electronics" node.
+
+    * Object-oriented programming uses the same principles! For instance, imagine a Vehicle class:
+
+        * ```cpp
+            class Vehicle {
+            public:
+                int wheels = 0;
+                string color = "blue";
+
+                void Print() const
+                {
+                    std::cout << "This " << color << " vehicle has " << wheels << " wheels!\n";
+                }
+            };
+            ```
+    
+    * We can derive other classes from Vehicle, such as Car or Bicycle. One advantage is that this saves us from having to re-define all of the common member variables - in this case, wheels and color - in each derived class.
+
+    * Another benefit is that derived classes, for example Car and Bicycle, can have distinct member variables, such as sunroof or kickstand. Different derived classes will have different member variables:
+
+        * ```cpp
+            class Car : public Vehicle {
+                public:
+                    bool sunroof = false;
+            };
+
+            class Bicycle : public Vehicle {
+                public:
+                    bool kickstand = true;
+            };
+            ```
+    
+    * Another example:
+
+        * ```cpp
+            #include <iostream>
+            #include <string>
+            using std::string;
+
+            class Vehicle {
+            public:
+                int wheels = 0;
+                string color = "blue";
+                string make  = "generic";
+                
+                void Print() const
+                {
+                    std::cout << "This " << color << " " << make << " vehicle has " << wheels << " wheels!\n";
+                }
+            };
+
+            class Car : public Vehicle {
+                public:
+                    bool sunroof = false;
+            };
+
+            class Bicycle : public Vehicle {
+                public:
+                    bool kickstand = true;
+            };
+
+            class Scooter : public Vehicle {
+                public:
+                    bool electric = false;
+            };
+
+            int main() 
+            {
+                Scooter scooter;
+                scooter.wheels = 2;
+                scooter.Print();
+            };
+            ```
+
+* Inherited Access Specifiers
+
+    * Just as access specifiers (i.e. public, protected, and private) define which class members users can access, the same access modifiers also define which class members users of a derived classes can access.
+
+    * Public inheritance: the public and protected members of the base class listed after the specifier keep their member access in the derived class
+
+    * Protected inheritance: the public and protected members of the base class listed after the specifier are protected members of the derived class
+
+    * Private inheritance: the public and protected members of the base class listed after the specifier are private members of the derived class
+
+    * ```cpp
+        // This example demonstrates the privacy levels
+        // between parent and child classes
+        #include <iostream>
+        #include <string>
+        using std::string;
+
+        class Vehicle {
+            public:
+                int wheels = 0;
+                string color = "blue";
+                
+                void Print() const
+                {
+                    std::cout << "This " << color << " vehicle has " << wheels << " wheels!\n";
+                }
+        };
+
+        class Car : public Vehicle {
+            public:
+                bool sunroof = false;
+        };
+
+        class Bicycle : protected Vehicle {
+            public:
+                bool kickstand = true;
+                void Wheels(int w)
+                {
+                    wheels = w;
+                }
+        };
+
+        class Scooter : private Vehicle {
+            public:
+                bool electric = false;
+                void Wheels(int w)
+                {
+                    wheels = w;
+                }
+        };
+
+        int main() 
+        {
+            Car car;
+            car.wheels = 4;
+            Bicycle bicycle;
+            bicycle.Wheels(2);
+            Scooter scooter;
+            scooter.Wheels(1);
+        };
+        ```
+
+    * Another example
+
+        * ```cpp
+            // Example solution for Animal class
+            #include <iostream>
+            #include <string>
+
+            // Define base class Animal
+            class Animal {
+            public:
+                std::string color;
+                std::string name;
+                int age;
+            };
+
+            // Declare derived class Snake
+            class Snake : public Animal {
+            public:
+                int length;
+                
+                void MakeSound() const
+                {
+                    std::cout << "Hiss\n";
+                }
+            };
+
+            // Declare derived class Cat
+            class Cat : public Animal {
+            public:
+                int height;
+
+                void MakeSound() const
+                {
+                    std::cout << "Meow\n";
+                }
+            };
+
+            // Test in main()
+            int main() {
+
+                Cat cat;
+                Snake snake;
+
+                cat.age = 10;
+                cat.name = "Lucy";
+                cat.MakeSound();
+                snake.MakeSound();
+
+                std::cout << cat.age << " " << cat.name << "\n";
+            }
+            ```
+
+* Composition
+
+    * Composition is a closely related alternative to inheritance. Composition involves constructing ("composing") classes from other classes, instead of inheriting traits from a parent class.
+
+    * A common way to distinguish "composition" from "inheritance" is to think about what an object can do, rather than what it is. This is often expressed as "has a" versus "is a".
+
+    * From the standpoint of composition, a cat "has a" head and "has a" set of paws and "has a" tail.
+
+    * From the standpoint of inheritance, a cat "is a" mammal.
+
+    * There is no hard and fast rule about when to prefer composition over inheritance. In general, if a class needs only extend a small amount of functionality beyond what is already offered by another class, it makes sense to inherit from that other class. However, if a class needs to contain functionality from a variety of otherwise unrelated classes, it makes sense to compose the class from those other classes.
+
+    * In this example, you'll practice working with composition in C++.
+        
+        * ```cpp
+            // Example solution for Circle class
+            #include <iostream>
+            #include <cmath>
+            #include <assert.h>
+            // Define PI
+            #define PI 3.14159;
+
+            // Define LineSegment struct
+            struct LineSegment {
+                // Define protected attribute length
+                public:
+                    double length;
+            };
+
+            // Define Circle class
+            class Circle {
+                public:
+                    Circle(LineSegment& radius);
+                    double Area();
+
+                private:
+                    LineSegment& radius_;
+            };
+
+            // Declare Circle class
+            Circle::Circle(LineSegment& radius) : radius_(radius) {}
+
+            double Circle::Area() 
+            {
+                return pow(Circle::radius_.length, 2) * PI;
+            }
+
+            // Test in main()
+            int main() 
+            {
+                LineSegment radius {3};
+                Circle circle(radius);
+                assert(int(circle.Area()) == 28);
+            }
+            ```
+    
+    * Class Hierarchy
+
+        * ```cpp
+            #include <cassert>
+
+            // TODO: Declare Vehicle as the base class
+            class Vehicle {};
+
+            // TODO: Derive Car from Vehicle
+            class Car : public Vehicle {
+                public:
+                    int wheels{4};
+            };
+
+            // TODO: Derive Sedan from Car
+            class Sedan : public Car {
+                public:
+                    bool trunk{true};
+                    int seats{4};
+            };
+
+            // TODO: Update main to pass the tests
+            int main() {
+                Sedan sedan;
+                assert(sedan.trunk == true);
+                assert(sedan.seats == 4);
+                assert(sedan.wheels == 4);
+            }
+            ```
+
+* Friends
+
+    * In C++, `friend` classes provide an alternative inheritance mechanism to derived classes. The main difference between classical inheritance and friend inheritance is that a `friend` class **can access private members of the base class**, which isn't the case for classical inheritance. In classical inheritance, a derived class can only access public and protected members of the base class.
+
+    * ```cpp
+        // Example solution for Rectangle and Square friend classes
+        #include <assert.h>
+
+        // Declare class Rectangle
+        class Rectangle;
+
+        // Define class Square as friend of Rectangle
+        class Square {
+        // Add public constructor to Square, initialize side
+        public:
+            Square(int s) : side(s) {}
+
+        private:
+            // Add friend class Rectangle
+            friend class Rectangle;
+            // Add private attribute side to Square
+            int side;
+        };
+
+        // Define class Rectangle
+        class Rectangle {
+        // Add public functions to Rectangle: area() and convert()
+        public:
+            Rectangle(const Square& a);
+            int Area() const;
+
+        private:
+            // Add private attributes width, height
+            int width {0};
+            int height {0};
+        };
+
+        // Define a Rectangle constructor that takes a Square
+        Rectangle::Rectangle(const Square& a) : width(a.side), height(a.side) {}
+
+        // Define Area() to compute area of Rectangle
+        int Rectangle::Area() const
+        {
+            return width * height;
+        }
+
+        // Update main() to pass the tests
+        int main()
+        {
+            Square square(4);
+            Rectangle rectangle(square);
+            assert(rectangle.Area() == 16); 
+        }
+        ```
+
+* Polymorphism
+
+    * Polymorphism is means "assuming many forms".
+
+    * In the context of object-oriented programming, polymorphism) describes a paradigm in which a function may behave differently depending on how it is called. In particular, the function will perform differently based on its inputs.
+
+    * Polymorphism can be achieved in two ways in C++: overloading and overriding. In this exercise we will focus on overloading.
+
+    * Overloading
+
+        * In C++, you can write two (or more) versions of a function with the same name. This is called "overloading". Overloading requires that we leave the function name the same, but we modify the function signature. For example, we might define the same function name with multiple different configurations of input arguments.
+
+        * This example of class Date overloads:
+
+            * ```cpp
+                #include <ctime>
+
+                class Date {
+                public:
+                    Date(int day, int month, int year) : day_(day), month_(month), year_(year) {}
+                    Date(int day, int month) : day_(day), month_(month)  // automatically sets the Date to the current year
+                    {
+                        time_t t = time(NULL);
+                        tm* timePtr = localtime(&t);
+                        year_ = timePtr->tm_year;
+                    }
+
+                private:
+                    int day_;
+                    int month_;
+                    int year_;
+                };
+                ```
+        
+        * ```cpp
+            #include <iostream>
+
+            class Human {};
+            class Dog {};
+            class Cat {};
+
+            // TODO: Write hello() function
+            void hello() { std::cout << "Hello, World!\n"; }
+
+            // TODO: Overload hello() three times
+            void hello(Human human) { std::cout << "Hello, Human!\n"; }
+            void hello(Dog dog) { std::cout << "Hello, Dog!\n"; }
+            void hello(Cat cat) { std::cout << "Hello, Cat!\n"; }
+
+            // TODO: Call hello() from main()
+            int main()
+            {
+                hello();
+                hello(Human());
+                hello(Dog());
+                hello(Cat());
+            }
+            ```
+
+* Operator Overloading
+
+    * n this exercise you'll see how to achieve polymorphism with operator overloading. You can choose any operator from the ASCII table and give it your own set of rules!
+
+    * Operator overloading can be useful for many things. Consider the + operator. We can use it to add ints, doubles, floats, or even std::strings.
+
+    * In order to overload an operator, use the operator keyword in the function signature:   
+
+        * ```cpp
+            Complex operator+(const Complex& addend) {
+                //...logic to add complex numbers
+            }
+            ```
+    
+    * Imagine vector addition. You might want to perform vector addition on a pair of points to add their x and y components. The compiler won't recognize this type of operation on its own, because this data is user defined. However, you can overload the + operator so it performs the action that you want to implement.
+
+        * ```cpp
+            #include <assert.h>
+
+            // TODO: Define Point class
+            class Point {
+                public:
+                    // TODO: Define public constructor
+                    Point(int x = 0, int y = 0) : x(x), y(y) {}
+
+                    // TODO: Define + operator overload
+                    Point operator+(const Point& addend) {
+                        Point sum;
+                        sum.x = x + addend.x;
+                        sum.y = y + addend.y;
+                        return sum;
+                    }
+
+                    // TODO: Declare attributes x and y
+                    int x, y;
+            };
+
+            // Test in main()
+            int main() {
+                Point p1(10, 5), p2(2, 4);
+                Point p3 = p1 + p2; // An example call to "operator +";
+                assert(p3.x == p1.x + p2.x);
+                assert(p3.y == p1.y + p2.y);
+            }
+            ```
+
+* Virtual Functions
+
+    * Virtual functions are a polymorphic feature. These functions are declared (and possibly defined) in a base class, and can be overridden by derived classes.
+
+    * This approach declares an interface at the base level, but delegates the implementation of the interface to the derived classes.
+
+    * In this exercise, class Shape is the base class. Geometrical shapes possess both an area and a perimeter. Area() and Perimeter() should be virtual functions of the base class interface. Append = 0 to each of these functions in order to declare them to be "pure" virtual functions.
+
+    * A pure virtual function is a virtual function that the base class declares but does not define.
+
+    * A pure virtual function has the side effect of making its class abstract. This means that the class cannot be instantiated. Instead, only classes that derive from the abstract class and override the pure virtual function can be instantiated.
