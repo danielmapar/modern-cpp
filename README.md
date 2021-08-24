@@ -2569,8 +2569,406 @@ When working with classes it is often helpful to be able to refer to the current
 
     * This approach declares an interface at the base level, but delegates the implementation of the interface to the derived classes.
 
-    * In this exercise, class Shape is the base class. Geometrical shapes possess both an area and a perimeter. Area() and Perimeter() should be virtual functions of the base class interface. Append = 0 to each of these functions in order to declare them to be "pure" virtual functions.
+    * In this exercise, class Shape is the base class. Geometrical shapes possess both an area and a perimeter. Area() and Perimeter() should be virtual functions of the base class interface. Append `= 0` to each of these functions in order to declare them to be "pure" virtual functions.
 
-    * A pure virtual function is a virtual function that the base class declares but does not define.
+    * **A pure virtual function is a virtual function that the base class declares but does not define.**
 
-    * A pure virtual function has the side effect of making its class abstract. This means that the class cannot be instantiated. Instead, only classes that derive from the abstract class and override the pure virtual function can be instantiated.
+    * A pure virtual function has the side effect of **making its class abstract**. This means that the class cannot be instantiated. Instead, only classes that derive from the abstract class and override the pure virtual function can be instantiated.
+
+    * ```cpp
+        class Shape {
+            public:
+                Shape() {}
+                virtual double Area() const = 0;
+                virtual double Perimeter() const = 0;
+        };
+        ```
+    
+    * **Virtual functions can be defined by derived classes, but this is not required**. However, if we mark the virtual function with `= 0` in the base class, then we are declaring the function to be a pure virtual function. This means that the **base class does not define this function. A derived class must define this function, or else the derived class will be abstract**.
+
+    * ```cpp
+        // Example solution for Shape inheritance
+        #include <assert.h>
+        #include <cmath>
+
+        // TODO: Define pi
+        #define PI 3.14159;
+
+        // TODO: Define the abstract class Shape
+        class Shape {
+            public:
+            // TODO: Define public virtual functions Area() and Perimeter()
+            // TODO: Append the declarations with = 0 to specify pure virtual functions
+            virtual double Area() const = 0;
+            virtual double Perimeter() const = 0;
+        };
+
+        // TODO: Define Rectangle to inherit publicly from Shape
+        class Rectangle : public Shape {
+            public:
+                // TODO: Declare public constructor
+                Rectangle(double width, double height) : width_(width), height_(height) {}
+                // TODO: Override virtual base class functions Area() and Perimeter()
+                double Area() const override { return width_ * height_; }
+                double Perimeter() const override { return 2 * (width_ + height_); }
+
+            private:
+                // TODO: Declare private attributes width and height
+                double width_;
+                double height_;
+        };
+
+        // TODO: Define Circle to inherit from Shape
+        class Circle : public Shape {
+            public:
+                // TODO: Declare public constructor
+                Circle(double radius) : radius_(radius) {}
+                // TODO: Override virtual base class functions Area() and Perimeter()
+                double Area() const override { return pow(radius_, 2) * PI; }
+                double Perimeter() const override { return 2 * radius_ * PI; }
+
+            private:
+                // TODO: Declare private member variable radius
+                double radius_;
+        };
+
+        // Test in main()
+        int main() {
+            double epsilon = 0.1; // useful for floating point equality
+
+            // Test circle
+            Circle circle(12.31);
+            assert(abs(circle.Perimeter() - 77.35) < epsilon);
+            assert(abs(circle.Area() - 476.06) < epsilon);
+
+            // Test rectangle
+            Rectangle rectangle(10, 6);
+            assert(rectangle.Perimeter() == 32);
+            assert(rectangle.Area() == 60);
+        }
+        ```
+    * Polymorphism: Overriding
+
+        * "Overriding" a function occurs when:
+
+            * A base class declares a virtual function.
+            
+            * A derived class overrides that virtual function by defining its own implementation with an identical function signature (i.e. the same function name and argument types).
+        
+        * ```cpp
+            class Animal {
+                public:
+                    virtual std::string Talk() const = 0;
+            };
+
+            class Cat {
+                public:
+                    std::string Talk() const { return std::string("Meow"); }
+            };
+            ```
+        
+        * ```cpp
+            #include <assert.h>
+            #include <string>
+
+            class Animal {
+                public:
+                    virtual std::string Talk() const = 0;
+            };
+
+            // TODO: Declare a class Dog that inherits from Animal
+            class Dog : Animal {
+                public:  
+                    std::string Talk() const;
+            };
+
+            std::string Dog::Talk() const {
+                return "Woof";
+            }
+
+            int main() {
+                Dog dog;
+                assert(dog.Talk() == "Woof");
+            }
+            ```
+
+    * Override  
+
+        * "Overriding" a function occurs when a derived class defines the implementation of a `virtual` function that it inherits from a base class.
+
+        * It is possible, but not required, to specify a function declaration as `override`.
+
+        * ```cpp
+            class Shape {
+                public:
+                    virtual double Area() const = 0;
+                    virtual double Perimeter() const = 0;
+            };
+
+            class Circle : public Shape {
+                public:
+                    Circle(double radius) : radius_(radius) {}
+                    double Area() const override { return pow(radius_, 2) * PI; } // specified as an override function
+                    double Perimeter() const override { return 2 * radius_ * PI; } // specified as an override function
+
+                private:
+                    double radius_;
+            };
+            ```
+
+        * This specification tells both the compiler and the human programmer that the purpose of this function is to override a virtual function. The compiler will verify that a function specified as `override` does indeed override some other virtual function, or otherwise the compiler will generate an error.
+
+        * Specifying a function as `override` is good practice, as it empowers the compiler to verify the code, and communicates the intention of the code to future users.
+
+        * ```cpp
+            #include <assert.h>
+            #include <cmath>
+
+            // TODO: Define PI
+            #define PI 3.14159
+
+            // TODO: Declare abstract class VehicleModel
+            class VehicleModel {
+                // TODO: Declare virtual function Move()
+                virtual void Move(double v, double phi) = 0;
+            };
+
+            // TODO: Derive class ParticleModel from VehicleModel
+            class ParticleModel : public VehicleModel {
+                public:
+                    // TODO: Override the Move() function
+                    void Move(double v, double phi) override {
+                        theta += phi;
+                        x += v * cos(theta);
+                        y += v * sin(theta);
+                    }
+                    // TODO: Define x, y, and theta
+                    double x = 0;
+                    double y = 0;
+                    double theta = 0;
+            };
+
+            // TODO: Derive class BicycleModel from ParticleModel
+            class BicycleModel : public ParticleModel {
+                public:
+                    // TODO: Override the Move() function
+                    void Move(double v, double phi) override {
+                        theta += v / L * tan(phi);
+                        x += v * cos(theta);
+                        y += v * sin(theta);
+                    }
+                    // TODO: Define L
+                    double L = 1;
+            };
+
+            // TODO: Pass the tests
+            int main() {
+                // Test function overriding
+                ParticleModel particle;
+                BicycleModel bicycle;
+                particle.Move(10, PI / 9);
+                bicycle.Move(10, PI / 9);
+                assert(particle.x != bicycle.x);
+                assert(particle.y != bicycle.y);
+                assert(particle.theta != bicycle.theta);
+            }
+            ```
+
+    * Multiple Inheritance
+        * In this exercise, you'll get some practical experience with multiple inheritance. If you have class Animal and another class Pet, then you can construct a class Dog, which inherits from both of these base classes. In doing this, you are able to incorporate attributes of multiple base classes.
+
+        * The Core Guidelines have some worthwhile recommendations about how and when to use multiple inheritance:
+            * ["Use multiple inheritance to represent multiple distinct interfaces"](http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#c135-use-multiple-inheritance-to-represent-multiple-distinct-interfaces)
+            * ["Use multiple inheritance to represent the union of implementation attributes"](http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#c136-use-multiple-inheritance-to-represent-the-union-of-implementation-attributes)
+        
+        * ```cpp
+            #include <iostream>
+            #include <string>
+            #include <assert.h>
+
+            class Animal {
+                public:
+                    double age;
+            };
+
+            class Pet {
+                public:
+                    std::string name;
+            };
+
+            // Dog derives from *both* Animal and Pet
+            class Dog : public Animal, public Pet {
+                public:
+                    std::string breed;
+            };
+
+            class Cat : public Animal, public Pet {
+                public:
+                    std::string color;
+            };
+
+            int main()
+            {
+                /*
+                Cat cat;
+                cat.color = "black";
+                cat.age = 10;
+                cat.name = "Max";
+                */
+                assert(cat.color == "black");
+                assert(cat.age == 10);
+                assert(cat.name == "Max");
+            }
+            ```
+
+* Generic Programming / Templates
+
+    * Templates
+
+        * Templates enable generic programming by generalizing a function to apply to any class. Specifically, templates use types as parameters so that the same implementation can operate on different data types.
+
+        * For example, you might need a function to accept many different data types. The function acts on those arguments, perhaps dividing them or sorting them or something else. Rather than writing and maintaining the multiple function declarations, each accepting slightly different arguments, you can write one function and pass the argument types as parameters. At compile time, the compiler then expands the code using the types that are passed as parameters.
+
+        * ```cpp
+            template <typename Type> Type Sum(Type a, Type b) { return a + b; }
+
+            int main() { std::cout << Sum<double>(20.0, 13.7) << "\n"; }    
+            ```
+        
+        * Because Sum() is defined with a template, when the program calls Sum() with doubles as parameters, the function expands to become:
+            
+            * ```cpp
+                double Sum(double a, double b) {
+                    return a+b;
+                }
+                ```
+        
+        * Or in this case:
+
+            * ```cpp
+                std::cout << Sum<char>(‘Z’, ’j’) << "\n";
+                ```
+        
+        * The program expands to become:
+
+            * ```cpp
+                char Sum(char a, char b) {
+                    return a+b;
+                }
+                ```
+    
+    * We use the keyword `template` to specify which function is generic. Generic code is the term for code that is independent of types. It is mandatory to put the `template<>` tag before the function signature, to specify and mark that the declaration is generic.
+
+    * Besides `template`, the keyword `typename` (or, alternatively, `class`) specifies the generic type in the function prototype. The parameters that follow typename (or class) represent generic types in the function declaration.
+
+    * In order to instantiate a templatized class, use a templatized constructor, for example: ```Sum<double>(20.0, 13.7)```. You might recognize this form as the same form used to construct a vector. That's because vectors are indeed a generic class!
+
+    * ```cpp
+        #include <assert.h>
+
+        // TODO: Create a generic function Product that multiplies two parameters
+        template <typename T>
+        T Product(T a, T b) {
+            return a * b;
+        }
+
+        int main() { 
+            assert(Product<int>(10, 2) == 20); 
+        }
+        ```
+    
+    * C++ 20 has a new feature for generic programming called `concept`. Class templates, function templates, and non-template functions (typically members of class templates) may be associated with a constraint, which specifies the requirements on template arguments, which can be used to select the most appropriate function overloads and template specializations.
+
+    * Named sets of such requirements are called concepts. Each concept is a predicate, evaluated at compile time, and becomes a part of the interface of a template where it is used as a constraint:
+
+    * ```cpp
+        #include <string>
+        #include <cstddef>
+        #include <concepts>
+        
+        // Declaration of the concept "Hashable", which is satisfied by any type 'T'
+        // such that for values 'a' of type 'T', the expression std::hash<T>{}(a)
+        // compiles and its result is convertible to std::size_t
+        template<typename T>
+        concept Hashable = requires(T a) {
+            { std::hash<T>{}(a) } -> std::convertible_to<std::size_t>;
+        };
+        
+        struct meow {};
+        
+        // Constrained C++20 function template:
+        template<Hashable T>
+        void f(T) {}
+        //
+        // Alternative ways to apply the same constraint:
+        // template<typename T>
+        //    requires Hashable<T>
+        // void f(T) {}
+        //
+        // template<typename T>
+        // void f(T) requires Hashable<T> {}
+        
+        int main() {
+        using std::operator""s;
+        f("abc"s); // OK, std::string satisfies Hashable
+        //f(meow{}); // Error: meow does not satisfy Hashable
+        }
+
+        ```
+    
+    * ```cpp
+        #include <assert.h>
+
+        // TODO: Declare a generic, templatized function Max()
+        template <typename T> T Max(T a, T b) {
+            return a > b ? a : b;
+        }
+
+        int main() { 
+            assert(Max(10, 50) == 50);
+            assert(Max(5.7, 1.436246) == 5.7);
+        }
+        ```
+
+* Deduction
+
+    * In this example, you will see the difference between total and partial deduction.
+
+    * Deduction occurs when you instantiate an object without explicitly identifying the types. Instead, the compiler "deduces" the types. This can be helpful for writing code that is generic and can handle a variety of inputs.
+
+    * ```cpp
+        #include <assert.h>
+
+        // TODO: Declare a generic, templatized average function
+        template <typename T> T average(T a, T b) { return (a+b)/2; }
+
+        int main() { assert(average(2.0,5.0) == 3.5); }
+        ```
+    
+* Exercise
+
+    * ```cpp
+        #include <assert.h>
+        #include <string>
+        #include <sstream>
+
+        // TODO: Add the correct template specification
+        template <typename KeyType, typename ValueType>
+        class Mapping {
+            public:
+                Mapping(KeyType key, ValueType value) : key(key), value(value) {}
+                std::string Print() const {
+                    std::ostringstream stream;
+                    stream << key << ": " << value;
+                    return stream.str();
+                }
+                KeyType key;
+                ValueType value;
+        };
+
+        // Test
+        int main() {
+            Mapping<std::string, int> mapping("age", 20);
+            assert(mapping.Print() == "age: 20");
+        }
+        ```
