@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <iomanip>
+#include <numeric>
 
 #include "linux_parser.h"
 
