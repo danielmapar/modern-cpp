@@ -3483,6 +3483,666 @@ When working with classes it is often helpful to be able to refer to the current
 
         * CallByReference finally has the same memory requirements as CallByPointer.
 
+* Dynamic Memory Allocation
+
+    * Heap memory, also know as dynamic memory , is an important resource available to programs (and programmers) to store data. The following diagram again shows the layout of virtual memory with the heap being right above the BSS and Data segment.
+
+    * ![heap_memory](./images/heap_memory.png)
+
+    * As mentioned earlier, the heap memory grows upwards while the stack grows in the opposite direction. We have seen in the last lesson that the automatic stack memory shrinks and grows with each function call and local variable. As soon as the scope of a variable is left, it is automatically deallocated and the stack pointer is shifted upwards accordingly.
+
+    * Heap memory is different in many ways: The programmer can request the allocation of memory by issuing a command such as `malloc` or `new` (more on that shortly). This block of memory will remain allocated until the programmer explicitly issues a command such as `free` or `delete`. The huge advantage of heap memory is the high degree of control a programmer can exert, albeit at the price of greater responsibility since memory on the heap must be actively managed.
+
+    * Let us take a look at some properties of heap memory:
+
+        * As opposed to local variables on the stack, memory can now be allocated in an arbitrary scope (e.g. inside a function) without it being deleted when the scope is left. Thus, as long as the address to an allocated block of memory is returned by a function, the caller can freely use it.
+
+        * Local variables on the stack are allocated at compile-time. Thus, the size of e.g. a string variable might not be appropriate as the length of the string will not be known until the program is executed and the user inputs it. With local variables, a solution would be to allocate a long-enough array of and hope that the actual length does not exceed the buffer size. With dynamically allocated heap memory, variables are allocated at run-time. This means that the size of the above-mentioned string variable can be tailored to the actual length of the user input.
+
+        * Heap memory is only constrained by the size of the address space and by the available memory. With modern 64 bit operating systems and large RAM memory and hard disks the programmer commands a vast amount of memory. However, if the programmer forgets to deallocate a block of heap memory, it will remain unused until the program is terminated. This is called a "memory leak".
+
+        * Unlike the stack, the heap is shared among multiple threads, which means that memory management for the heap needs to take concurrency into account as several threads might compete for the same memory resource.
+
+        * When memory is allocated or deallocated on the stack, the stack pointer is simply shifted upwards or downwards. Due to the sequential structure of stack memory management, stack memory can be managed (by the operating system) easily and securely. With heap memory, allocation and deallocation can occur arbitrarily, depending on the lifetime of the variables. This can result in fragmented memory over time, which is much more difficult and expensive to manage.
+
+    * Memory Fragmentation
+
+        * Let us construct a theoretic example of how memory on the heap can become fragmented: Suppose we are interleaving the allocation of two data types `X` and `Y` in the following fashion: First, we allocate a block of memory for a variable of type X, then another block for Y and so on in a repeated manner until some upper bound is reached. At the end of this operation, the heap might look like the following:
+
+        * ![block_of_memory](./images/block_of_memory.png)
+
+        * At some point, we might then decide to deallocate all variables of type Y, leading to empty spaces in between the remaining variables of type X. In between two blocks of type "X", no memory for an additional "X" could now be squeezed in this example.
+
+        * ![block_of_memory](./images/block_of_memory_2.png)
+
+        * A classic symptom of memory fragmentation is that you try to allocate a large block and you can’t, even though you appear to have enough memory free. On systems with virtual memory however, this is less of a problem, because large allocations only need to be contiguous in virtual address space, not in physical address space.
+
+        * When memory is heavily fragmented however, memory allocations will likely take longer because the memory allocator has to do more work to find a suitable space for the new object.
+
+        * Until now, our examples have been only theoretical. It is time to gain some practical experience in the next section using `malloc` and `free` as C-style methods for dynamic memory management.
+
+* `malloc` and `free`
+
+    * So far we only considered primitive data types, whose storage space requirement was already fixed at compile time and could be scheduled with the building of the program executable. However, it is not always possible to plan the memory requirements exactly in advance, and it is inefficient to reserve the maximum memory space each time just to be on the safe side. C and C++ offer the option to reserve memory areas during the program execution, i.e. at runtime. It is important that the reserved memory areas are released again at the "appropriate point" to avoid memory leaks. It is one of the major challenges in memory management to always locate this "appropriate point" though.
+
+* Allocating Dynamic Memory¶
+
+    * To allocate dynamic memory on the heap means to make a contiguous memory area accessible to the program at runtime and to mark this memory as occupied so that no one else can write there by mistake.
+
+    * To reserve memory on the heap, one of the two functions `malloc` (stands for Memory Allocation) or `calloc` (stands for Cleared Memory Allocation) is used. The header file `stdlib.h` or `malloc.h` must be included to use the functions.
+
+    * Here is the syntax of `malloc` and `calloc` in C/C++:
+
+        * ```cpp
+            pointer_name = (cast-type*) malloc(size);
+            pointer_name = (cast-type*) calloc(num_elems, size_elem);
+            ```
+    
+    * `malloc` is used to dynamically allocate a single large block of memory with the specified size. It returns a pointer of type `void` which can be cast into a pointer of any form.
+
+    * `calloc` is used to dynamically allocate the specified number of blocks of memory of the specified type. It initializes each block with a default value '0'.
+
+    * Both functions return a pointer of type `void` which can be cast into a pointer of any form. If the space for the allocation is insufficient, a NULL pointer is returned.
+
+    * ```cpp
+        #include <stdio.h> 
+        #include <stdlib.h> 
+        
+        int main() 
+        { 
+            void *p = malloc(sizeof(int));
+            printf("address=%p, value=%d\n", p, *p);
+
+            return 0; 
+        }
+        ```
+
+    * The `sizeof` command is a convenient way of specifying the amount of memory (in bytes) needed to store a certain data type. For an int, sizeof returns 4. However, when compiling this code, the following warning is generated on my machine:
+
+    * ```bash
+        warning: ISO C++ does not allow indirection on operand of type 'void *' [-Wvoid-ptr-dereference] 
+
+        printf("address=%p, value=%d", p, *p);
+        ```
+    
+    * In the virtual workspace, when compiling with `g++`, an error is thrown instead of a warning.
+
+    * The problem with `void` pointers is that there is no way of knowing the offset to the end of the allocated memory block. For an int, this would be 4 bytes but for a double, the offset would be 8 bytes. So in order to retrieve the entire block of memory that has been reserved, we need to know the data type and the way to achieve this with `malloc` is by casting the return pointer: `int *p = (int*)malloc(sizeof(int));`
+
+    * This code now produces the following output without compiler warnings: `address=0x1003001f0, value=0`
+
+    * Obviously, the memory has been initialized with 0 in this case. However, you should not rely on pre-initialization as this depends on the data type as well as on the compiler you are using.
+
+    * At compile time, only the space for the pointer is reserved (on the stack). When the pointer is initialized, a block of memory of `sizeof(int)` bytes is allocated (on the heap) at program runtime. The pointer on the stack then points to this memory location on the heap.
+
+    * Modify the example in a way that memory for 3 integers is reserved.
+
+    * ```cpp
+        // reserve memory for several integers
+        int *p2 = (int*)malloc(3*sizeof(int));
+        printf("address=%p, value=%d\n", p2, *p2);
+        ```
+
+* Memory for Arrays and Structs
+
+    * Since arrays and pointers are displayed and processed identically internally, individual blocks of data can also be accessed using array syntax:
+
+    * ```cpp
+        int *p = (int*)malloc(3*sizeof(int));
+        p[0] = 1; p[1] = 2; p[2] = 3;
+        printf("address=%p, second value=%d\n", p, p[1]);
+        ```
+    
+    * Until now, we have only allocated memory for a C/C++ data primitive (i.e. int). However, we can also define a proprietary structure which consists of several primitive data types and use `malloc` or `calloc` in the same manner as before:
+
+    * ```cpp
+        struct MyStruct {
+            int i; 
+            double d; 
+            char a[5];
+        };
+
+        MyStruct *p = (MyStruct*)calloc(4,sizeof(MyStruct));
+        p[0].i = 1; p[0].d = 3.14159; p[0].a[0] = 'a';
+        ```
+    
+    * After defining the struct `MyStruct` which contains a number of data primitives, a block of memory four times the size of MyStruct is created using the `calloc` command. As can be seen, the various data elements can be accessed very conveniently.
+
+    * The size of the memory area reserved with `malloc` or `calloc` can be increased or decreased with the `realloc` function.
+
+    * `pointer_name = (cast-type*) realloc( (cast-type*)old_memblock, new_size );`
+
+    * To do this, the function must be given a pointer to the previous memory area and the new size in bytes. Depending on the compiler, the reserved memory area is either (a) expanded or reduced internally (if there is still enough free heap after the previously reserved memory area) or (b) a new memory area is reserved in the desired size and the old memory area is released afterwards.
+
+    * The data from the old memory area is retained, i.e. if the new memory area is larger, the data will be available within new memory area as well. If the new memory area is smaller, the data from the old area will be available only up until the site of the new area - the rest is lost.
+
+    * In the example on the right, a block of memory of initially 8 bytes (two integers) is resized to 16 bytes (four integers) using `realloc`.
+
+    * Note that `realloc` has been used to increase the memory size and then decrease it immediately after assigning the values 3 and 4 to the new blocks. The output looks like the following:
+
+        * ```cpp
+            address=0x100300060, value=1
+            address=0x100300064, value=2
+            address=0x100300068, value=3
+            address=0x10030006c, value=4
+            ```
+
+    * ```cpp
+        #include <stdio.h> 
+        #include <stdlib.h> 
+
+        int main() 
+        { 
+            // reserve memory for two integers
+            int *p = (int*)malloc(2*sizeof(int));
+            p[0] = 1; p[1] = 2; 
+
+            // resize memory to hold four integers
+            p = (int*)realloc(p,4*sizeof(int));
+            p[2] = 3; p[3] = 4; 
+
+            // resize memory again to hold two integers
+            p = (int*)realloc(p,2*sizeof(int));
+
+            printf("address=%p, value=%d\n", p+0, *(p+0)); // valid
+            printf("address=%p, value=%d\n", p+1, *(p+1)); // valid
+
+            printf("address=%p, value=%d\n", p+2, *(p+2)); // INVALID
+            printf("address=%p, value=%d\n", p+3, *(p+3)); // INVALID
+
+            return 0; 
+        }
+        ```
+
+    * Interestingly, the pointers `p+2` and `p+3` can still access the memory location they point to. Also, the original data (numbers 3 and 4) is still there. So `realloc` will not erase memory but merely mark it as "available" for future allocations. It should be noted however that accessing a memory location after such an operation must be avoided as it could cause a `segmentation fault`. We will encounter segmentation faults soon when we discuss "dangling pointers" in one of the next lessons.
+
+* Freeing up Memory
+
+    * If memory has been reserved, it should also be released as soon as it is no longer needed. If memory is reserved regularly without releasing it again, the memory capacity may be exhausted at some point. If the RAM memory is completely used up, the data is swapped out to the hard disk, which slows down the computer significantly.
+
+    * The free function releases the reserved memory area so that it can be used again or made available to other programs. To do this, the pointer pointing to the memory area to be freed is specified as a parameter for the function. In the free_example.cpp, a memory area is reserved and immediately released again.
+
+    * ```cpp
+        #include <stdio.h>
+        #include <stdlib.h>
+
+        int main()
+        {
+            void *p = malloc(100); 
+            free(p);
+
+            return 0;
+        }
+        ```
+    
+    * Some things should be considered with dynamic memory management, whose neglect in some cases might result in unpredictable program behavior or a system crash - in some cases unfortunately without error messages from the compiler or the operating system:
+
+        * `free` can only free memory that was reserved with `malloc` or `calloc`.
+
+        * `free` can only release memory that has not been released before. Releasing the same block of memory twice will result in an error.
+
+    * In the example on the right, a pointer `p` is copied into a new variable p2, which is then passed to free AFTER the original pointer has been already released.
+
+    * `free(41143,0x1000a55c0) malloc: *** error for object 0x1003001f0: pointer being freed was not allocated.`
+
+    * In the workspace, you will see this error: `*** Error in './a.out': double free or corruption (fasttop): 0x0000000000755010 ***`
+
+    * The pointer `p2` in the example is invalid as soon as `free(p)` is called. It still holds the address to the memory location which has been freed, but may not access it anymore. Such a pointer is called a **"dangling pointer"**.
+
+    * Memory allocated with `malloc` or `calloc` is not subject to the familiar rules of variables in their respective scopes. This means that they exist independently of block limits until they are released again or the program is terminated. However, the pointers which refer to such heap-allocated memory are created on the stack and thus only exist within a limited scope. As soon as the scope is left, the pointer variable will be lost - but not the heap memory it refers to.
+
+
+* Using `new` and `delete`
+
+    * Comparing `malloc` with `new`
+
+    * The functions `malloc` and `free` are library function and represent the default way of allocating and deallocating memory in C. In C++, they are also part of the standard and can be used to allocate blocks of memory on the heap.
+
+    * With the introduction of classes and object oriented programming in C++ however, memory allocation and deallocation has become more complex: When an object is created, its constructor needs to be called to allow for member initialization. Also, on object deletion, the destructor is called to free resources and to allow for programmer-defined clean-up tasks. For this reason, C++ introduces the operators `new` / `delete`, which represent the **object-oriented counterpart** to memory management with `malloc` / `free`.
+
+    * ```cpp
+        #include <stdlib.h>
+        #include <iostream>
+
+        class MyClass
+        {
+        private:
+            int *_number;
+
+        public:
+            MyClass()
+            {
+                std::cout << "Allocate memory\n";
+                _number = (int *)malloc(sizeof(int));
+            }
+            ~MyClass()
+            {
+                std::cout << "Delete memory\n";
+                free(_number);
+            }
+            void setNumber(int number)
+            {
+                *_number = number;
+                std::cout << "Number: " << _number << "\n";
+            }
+        };
+
+
+        int main()
+        {
+            // allocate memory using malloc
+            // comment these lines out to run the example below
+            MyClass *myClass = (MyClass *)malloc(sizeof(MyClass));
+            myClass->setNumber(42); // EXC_BAD_ACCESS
+            free(myClass);
+            
+            // allocate memory using new
+            MyClass *myClass = new MyClass();
+            myClass->setNumber(42); // works as expected
+            delete myClass;
+
+            return 0;
+        }
+        ```
+
+    * If we were to create a C++ object with `malloc,` the constructor and destructor of such an object would not be called. Consider the class on the right. The constructor allocates memory for the private element _number (yes, we could have simply used int instead of int*, but that's for educational purposes only), and the destructor releases memory again. The setter method setNumber finally assigns a value to _number under the assumption that memory has been allocated previously.
+
+    * In main, we will allocate memory for an instance of MyClass using both `malloc`/ `free` and `new`/`delete`.
+
+    * With `malloc`, the program crashes on calling the method `setNumber`, as no memory has been allocated for _number - because the constructor has not been called. Hence, an `EXC_BAD_ACCESS` error occurs, when trying to access the memory location to which _number is pointing. With _new, the output looks like the following:
+
+    * ```bash
+        Allocate memory
+        Number: 42
+        Delete memory
+        ```
+
+    * Before we go into further details of `new`/`delete`, let us briefly summarize the major differences between `malloc`/`free` and `new`/`delete`:
+
+        * Constructors / Destructors Unlike `malloc( sizeof(MyClass) )`, the call `new MyClass()` calls the constructor. Similarly, delete calls the destructor.
+
+        * Type safety `malloc` returns a void pointer, which needs to be cast into the appropriate data type it points to. This is not type safe, as you can freely vary the pointer type without any warnings or errors from the compiler as in the following small example: `MyObject *p = (MyObject*)malloc(sizeof(int))`;
+
+        * In C++, the call `MyObject *p = new MyObject()` returns the correct type automatically - it is thus type-safe.
+
+        * Operator Overloading As `malloc` and `free` are functions defined in a library, their behavior can not be changed easily. The `new` and `delete` operators however can be overloaded by a class in order to include optional proprietary behavior. We will look at an example of overloading `new` further down in this section.
+
+    * Creating and Deleting Objects
+
+        * As with `malloc` and `free`, a call to `new` always has to be followed by a call to `delete` to ensure that memory is properly deallocated. If the programmer forgets to call delete on the object (which happens quite often, even with experienced programmers), the object resides in memory until the program terminates at some point in the future causing a memory leak.
+
+        * Let us revisit a part of the code example to the right:
+
+            * ```cpp
+                myClass = new MyClass();
+                myClass->setNumber(42); // works as expected
+                delete myClass;
+                ```
+
+        * The call to `new` has the following consequences:
+
+            * Memory is allocated to hold a new object of type `MyClass`
+
+            * A new object of type `MyClass` is constructed within the allocated memory by calling the constructor of `MyClass`
+
+
+        * The call to delete causes the following:
+
+            * The object of type `MyClass` is destroyed by calling its destructor
+
+            * The memory which the object was placed in is deallocated
+
+    * Optimizing Performance with placement `new`
+
+        * In some cases, it makes sense to separate memory allocation from object construction. Consider a case where we need to reconstruct an object several times. If we were to use the standard `new`/`delete` construct, memory would be allocated and freed unnecessarily as only the content of the memory block changes but not its size. By separating allocation from construction, we can get a significant performance increase.
+
+        * C++ allows us to do this by using a construct called `placement new`: With `placement new`, we can pass a preallocated memory and construct an object at that memory location. Consider the following code:
+
+        * ```cpp
+            void *memory = malloc(sizeof(MyClass));
+            MyClass *object = new (memory) MyClass;
+            ```
+
+        * The syntax `new (memory)` is denoted as `placement new`. The difference to the "conventional" `new` we have been using so far is that that **no memory is allocated**. The call constructs an object and places it in the assigned memory location. There is however, no `delete` equivalent to `placement new`, so we have to call the destructor explicitly in this case instead of using `delete` as we would have done with a regular call to `new`:
+
+            * ```cpp
+                object->~MyClass();
+                free(memory); 
+                ```
+        * Important: Note that this should never be done outside of `placement new`.
+
+        * In the next section, we will look at how to overload the new operator and show the performance difference between `placement new` and `new`
+
+    * Overloading new and delete
+
+        * ```cpp
+            #include <iostream>
+            #include <stdlib.h>
+
+            class MyClass
+            {
+                int _mymember;
+
+            public:
+                MyClass()
+                {
+                    std::cout << "Constructor is called\n";
+                }
+
+                ~MyClass()
+                {
+                    std::cout << "Destructor is called\n";
+                }
+
+                void *operator new(size_t size)
+                {
+                    std::cout << "new: Allocating " << size << " bytes of memory" << std::endl;
+                    void *p = malloc(size);
+
+                    return p;
+                }
+
+                void operator delete(void *p)
+                {
+                    std::cout << "delete: Memory is freed again " << std::endl;
+                    free(p);
+                }
+            };
+
+            int main()
+            {
+                MyClass *p = new MyClass();
+                delete p;
+            }
+            ```
+
+        * One of the major advantages of `new`/`delete` over `free`/`malloc` is the possibility of overloading. While both `malloc` and `free` are function calls and thus can not be changed easily, `new` and `delete` are operators and can thus be overloaded to integrate customized functionality, if needed.
+
+        * The syntax for overloading the new operator looks as follows:
+            * `void* operator new(size_t size);`
+        
+        * The operator receives a parameter size of type `size_t`, which specifies the number of bytes of memory to be allocated. The return type of the overloaded `new` is a `void` pointer, which references the beginning of the block of allocated memory.
+
+        * The syntax for overloading the `delete` operator looks as follows:
+
+            * `void operator delete(void*);`
+        
+        * The operator takes a pointer to the object which is to be deleted. As opposed to `new`, the operator `delete` does not have a return value.
+
+        * In the code to the above, both the `new` and the `delete` operator are overloaded. In `new`, the size of the class object in bytes is printed to the console. Also, a block of memory of that size is allocated on the heap and the pointer to this block is returned. In `delete`, the block of memory is freed again. The console output of this example looks as follows:
+
+            * ```bash
+            new: Allocating 4 bytes of memory
+            Constructor is called
+            Destructor is called
+            delete: Memory is freed again 
+            ```
+
+        * As can be seen from the order of text output, memory is instantiated in `new` before the constructor is called, while the order is reversed for the destructor and the call to `delete`.
+
+    * Overloading new[] and delete[]:
+
+        * In addition to the `new` and `delete` operators we have seen so far, we can use the following code to create an array of objects:
+
+        * ```cpp
+            void* operator new[](size_t size);
+            void operator delete[](void*);
+            ```
+
+        * ```cpp
+            #include <iostream>
+            #include <stdlib.h>
+
+            class MyClass
+            {
+                int _mymember;
+
+            public:
+                MyClass()
+                {
+                    std::cout << "Constructor is called\n";
+                }
+
+                ~MyClass()
+                {
+                    std::cout << "Destructor is called\n";
+                }
+
+                void *operator new[](size_t size)
+                {
+                    std::cout << "new: Allocating " << size << " bytes of memory" << std::endl;
+                    void *p = malloc(size);
+
+                    return p;
+                }
+
+                void operator delete[](void *p)
+                {
+                    std::cout << "delete: Memory is freed again " << std::endl;
+                    free(p);
+                }
+            };
+
+            int main()
+            {
+                MyClass *p = new MyClass[3]();
+                delete[] p;
+            }
+            ```
+
+    * In main, we are now creating an array of three objects of `MyClass`. Also, the overloaded `new` and `delete` operators have been changed to accept arrays. Let us take a look at the console output:
+
+        * ```bash
+            new: Allocating 20 bytes of memory
+            Constructor is called
+            Constructor is called
+            Constructor is called
+            Destructor is called
+            Destructor is called
+            Destructor is called
+            delete: Memory is freed again 
+            ```
+
+    * Interestingly, the memory requirement is larger than expected: With `new`, the block size was 4 bytes, which is exactly the space required for a single integer. Thus, with three integers, it should now be 12 bytes instead of 20 bytes. The reason for this is the memory allocation overhead that the **compiler needs to keep track of the allocated blocks of memory** - which in itself consumes memory. If we change the above call to e.g. new MyClass[100](), we will see that the overhead of 8 bytes does not change:
+
+        * ```bash
+            new: Allocating 408 bytes of memory
+            Constructor is called
+            …
+            Destructor is called
+            delete: Memory is freed again 
+            ```
+
+    * Reasons for overloading `new` and `delete`
+
+        * Now that we have seen how to overload the `new` and `delete` operators, let us summarize the major scenarios where it makes sense to do this:
+
+            * The overloaded `new` operator function allows to add additional parameters. Therefore, a class can have multiple overloaded `new` operator functions. This gives the programmer more flexibility in customizing the memory allocation for objects.
+
+            * Overloaded the `new` and `delete` operators provides an easy way to integrate a mechanism similar to garbage collection capabilities (such as in Java), as we will shorty see later in this course.
+
+            * By adding exception handling capabilities into new and delete, the code can be made more robust.
+
+            * It is very easy to add customized behavior, such as overwriting deallocated memory with zeros in order to increase the security of critical application data.
+
+* Overview of memory management problems
+
+    * One of the primary advantages of C++ is the flexibility and control of resources such as memory it gives to the programmer. This advantage is further amplified by a significant increase in the performance of C++ programs compared to other languages such as Python or Java.
+
+    * However, these advantages come at a price as they demand a high level of experience from the programer. As Bjarne Stroustrup put it so elegantly:
+
+        * "C makes it easy to shoot yourself in the foot; C++ makes it harder, but when you do it blows your whole leg off".
+    
+    * In this chapter, we will look at a collection of typical errors in memory management that you need to watch out for.
+
+        * **Memory Leaks** Memory leaks occur when data is allocated on the heap at runtime, but not properly deallocated. A program that forgets to clear a memory block is said to have a memory leak - this may be a serious problem or not, depending on the circumstances and on the nature of the program. For a program that runs, computes something, and quits immediately, memory leaks are usually not a big concern. Memory leaks are mostly problematic for programs that run for a long time and/or use large data structures. In such a case, memory leaks can gradually fill the heap until allocation requests can no longer be properly met and the program stops responding or crashes completely. We will look at an example further down in this section.
+
+        * **Buffer Overruns** Buffer overruns occur when memory outside the allocated limits is overwritten and thus corrupted. One of the resulting problems is that this effect may not become immediately visible. When a problem finally does occur, cause and effect are often hard to discern. It is also sometimes possible to inject malicious code into programs in this way, but this shall not be discussed here.
+
+        * In this example, the allocated stack memory is too small to hold the entire string, which results in a segmentation fault:
+
+        * ```cpp
+            char str[5];
+            strcpy(str,"BufferOverrun");
+            printf("%s",str);
+            ```
+
+        * **Uninitialized Memory** Depending on the C++ compiler, data structures are sometimes initialized (most often to zero) and sometimes not. So when allocating memory on the heap without proper initialization, it might sometimes contain garbage that can cause problems.
+
+        * Generally, a variable will be automatically initialized in these cases:
+
+            * it is a class instance where the default constructor initializes all primitive types
+            * array initializer syntax is used, such as int a[10] = {}
+            * it is a global or extern variable
+            * it is defined `static`
+
+        * The behavior of the following code is potentially undefined:
+
+            * ```cpp
+                int a;
+                int b=a*42;
+                printf("%d",b);
+                ```
+
+        * **Incorrect pairing of allocation and deallocation** Freeing a block of memory more than once will cause a program to crash. This can happen when a block of memory is freed that has never been allocated or has been freed before. Such behavior could also occur when improper pairings of allocation and deallocation are used such as using `malloc()` with `delete` or `new` with `free()`.
+
+        * In this first example, the wrong new and delete are paired
+
+            * ```cpp
+                double *pDbl=new double[5];
+                delete pDbl;
+                ```
+        * In this second example, the pairing is correct but a double deletion is performed:
+
+            * ```cpp
+                char *pChr=new char[5];
+                delete[] pChr;
+                delete[] pChr;
+                ```
+
+        * **Invalid memory access** This error occurs then trying to access a block of heap memory that has not yet or has already been deallocated.
+
+        * In this example, the heap memory has already been deallocated at the time when `strcpy()` tries to access it:
+
+        * ```cpp
+            char *pStr=new char[25];
+            delete[] pStr;
+            strcpy(pStr, "Invalid Access");
+            ```
+
+* [Valgrind](https://valgrind.org/) for debugging memory leaks
+
+    * Even experienced developers sometimes make mistakes that cannot be discovered at first glance. Instead of spending a lot of time searching, it makes sense for C and C++ programmers to use helper tools to perform automatic analyses of their code.
+
+    * In this section, we will look at `Valgrind`, a free software for Linux and Mac that is able to automatically detect memory. Windows programers can for example use the Visual Studio debugger and C Run-time Library (CRT) to detect and identify memory leaks. More information on how to do this can be found here: [Find memory leaks with the CRT Library - Visual Studio | Microsoft Docs](https://docs.microsoft.com/en-us/visualstudio/debugger/finding-memory-leaks-using-the-crt-library?view=vs-2019)
+
+    * With recent versions of MacOS, occasional difficulties have been reported with installing `Valgrind.` A working version for MacOS Mojave can be downloaded from GitHub via Homebrew: GitHub - sowson/valgrind: [Experimental Version of Valgrind for macOS 10.14.6 Mojave](https://github.com/sowson/valgrind)
+
+    * `Valgrind` is a framework that facilitates the development of tools for the dynamic analysis of programs. Dynamic analysis examines the behavior of a program at runtime, in contrast to static analysis, which often checks programs for various criteria or potential errors at the source code level before, during, or after translation. More information on Valgrind can be found here: [Valgrind: About](https://www.valgrind.org/info/)
+
+    * The Memcheck tool within Valgrind can be used to detect typical errors in programs written in C or C++ that occur in connection with memory management. It is probably the best-known tool in the Valgrind suite, and the name Valgrind is often used as a synonym for Memcheck.
+
+    * The following code generates a memory leak as the integer array has been allocated on the heap but the deallocation has been forgotten by the programmer:
+
+        * ```cpp
+            int main()
+            {
+                int *pInt = new int[10];
+
+                return 0; 
+            }
+            ```
+
+    * The array of integers on the heap to which pInt is pointing has a size of 10 * sizeof(int), which is 40 bytes. Let us now use Valgrind to search for this leak.
+
+    * After compiling the `memory_leaks_debugging.cpp` code file on the right to a.out, the terminal can be used to start Valgrind with the following command:
+
+        * `valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file=/home/workspace/valgrind-out.txt /home/workspace/a.out`
+
+    * Let us look at the call parameters one by one:
+
+        * `--leak-check` : Controls the search for memory leaks when the client program finishes. If set to summary, it says how many leaks occurred. If set to full, each individual leak will be shown in detail.
+
+        * `--show-leak-kinds` : controls the set of leak kinds to show when —leak-check=full is specified. Options are definite, indirect, possible reachable, all and none
+
+        * `--track-origins` : can be used to see where uninitialised values come from.
+
+    * You can read the file into the terminal with: `cat valgrind-out.txt`
+
+    * In the following, a (small) excerpt of the `valgrind-out.txt` log file is given:
+
+        * ```bash
+            ==952== 40 bytes in 1 blocks are definitely lost in loss record 18 of 45
+            ...
+            ==952==    by 0x10019A377: operator new(unsigned long) (in /usr/lib/libc++abi.dylib)
+
+            ...
+
+            ==952==    by 0x100000F8A: main (memory_leaks_debugging.cpp:12)
+
+            ...
+
+            ==952== LEAK SUMMARY:
+            ==952==    definitely lost: 40 bytes in 1 blocks
+            ==952==    indirectly lost: 0 bytes in 0 blocks
+            ==952==      possibly lost: 72 bytes in 3 blocks
+            ==952==    still reachable: 200 bytes in 6 blocks
+            ==952==         suppressed: 18,876 bytes in 160 blocks
+            ```
+
+    * As expected, the memory leak caused by the omitted deletion of the array of 10 integers in the code sample above shows up in the leak summary. Additionally, the exact position where the leak occurs in the code (line 12) can also be seen together with the responsible call with caused the leak.
+
+    * This short introduction into memory leak search is only an example of how powerful analysis tools such as Valgrind can be used to detect memory-related problems in your code.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
