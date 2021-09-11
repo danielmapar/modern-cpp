@@ -4482,15 +4482,169 @@ When working with classes it is often helpful to be able to refer to the current
                 return 0; 
             }
             ```
+    
+    * Lvalue reference
+
+        *  An `lvalue` reference can be considered as an alternative name for an object. It is a reference that binds to an `lvalue` and is declared using an optional list of specifiers (which we will not further discuss here) followed by the reference declarator &. The short code sample on the right declares an integer `i` and a reference `j` which can be used as an alias for the existing object.
+
+        * ```cpp
+            #include <iostream>
+
+            int main()
+            {
+                int i = 1; 
+                int &j = i; 
+                ++i;
+                ++j;
+
+                std::cout << "i = " << i << ", j = " << j << std::endl;
+
+                return 0;
+            }
+            ```
+        
+        * The output of the program is `i = 3, j = 3`
+
+        * We can see that the `lvalue` reference `j` can be used just as `i` can. A change to either `i` or `j` will affect the same memory location on the stack.
+
+        * One of the primary use-cases for `lvalue` references is the pass-by-reference semantics in function calls as in the example on the right.
+
+        * ```cpp
+            #include <iostream>
+
+            void myFunction(int &val)
+            {
+                ++val;
+            }
+
+            int main()
+            {
+                int i = 1; 
+                myFunction(i);
+
+                std::cout << "i = " << i << std::endl;
+
+                return 0;
+            }
+            ```
+        
+        * The function `myFunction` has an `lvalue` reference as a parameter, which establishes an alias to the integer `i` which is passed to it in `main`.
 
 
+    * Rvalue references
 
+        * You already know that an `rvalue` is a temporary expression which is - among other use-cases, a means of initializing objects. In the call `int i = 42`, 42 is the `rvalue`.
 
+        * Let us consider an example similar to the last one, shown on the right.
 
+        * ```cpp
+            #include <iostream>
 
+            void myFunction(int &val)
+            {
+                std::cout << "val = " << val << std::endl;
+            }
 
+            int main()
+            {
+                int j = 42;
+                myFunction(j);
 
+                myFunction(42);
 
+                int k = 23; 
+                myFunction(j+k);
+
+                return 0; 
+            }
+            ```
+
+        * As before, the function `myFunction` takes an `lvalue` reference as its argument. In main, the call `myFunction(j)` works just fine while `myFunction(42)` as well as `myFunction(j+k)` produces the following compiler error on Mac:
+
+        * `candidate function not viable: expects an l-value for 1st argument`
+
+        * and the following error in the workspace with g++:
+
+        * `error: cannot bind non-const lvalue reference of type ‘int&’ to an rvalue of type ‘int’`
+
+        * While the number `42` is obviously an `rvalue`, with `j+k` things might not be so obvious, as `j` and `k` are variables and thus `lvalues`. To compute the result of the addition, the compiler has to create a temporary object to place it in - and this object is an `rvalue`.
+
+    * Since C++11, there is a new type available called `rvalue` reference, which can be identified from the double ampersand `&&` after a type name. With this operator, it is possible to store and even modify an `rvalue`, i.e. a temporary object which would otherwise be lost quickly.
+
+    * ```cpp
+        #include <iostream>
+
+        int main()
+        {
+            int i = 1; 
+            int j = 2; 
+            int k = i + j; 
+            int &&l = i + j; 
+
+            std::cout << "k = " << k << ", l = " << l << std::endl;
+
+            return 0; 
+        }
+        ```
+
+    * But what do we need this for? Before we look into the answer to this question, let us consider the example on the top.
+
+    * After creating the integers `i` and `j` on the stack, the sum of both is added to a third integer `k`. Let us examine this simple example a little more closely. In the first and second assignment, `i` and `j` are created as `lvalues`, while `1` and `2` are `rvalues`, whose value is copied into the memory location of `i` and `j`. Then, a third `lvalue`, `k`, is created. The sum `i+j` is created as an `rvalue`, which holds the result of the addition before being copied into the memory location of `k`. This is quite a lot of copying and holding of temporary values in memory. With an `rvalue` reference, this can be done more efficiently.
+
+    * The expression `int &&l` creates an `rvalue` reference, to which the address of the temporary object is assigned, that holds the result of the addition. So instead of first creating the `rvalue` `i+j`, **then copying it and finally deleting it, we can now hold the temporary object in memory.**. This is much more efficient than the first approach, even though saving a few bytes of storage in the example might not seem like much at first glance. One of the most important aspects of `rvalue` references is that they pave the way for `move semantics`, which is a mighty technique in modern C++ to optimize memory usage and processing speed. `Move semantics` and `rvalue` references make it possible to write code that transfers resources such as dynamically allocated memory from one object to another in a very efficient manner and also supports the concept of exclusive ownership, as we will shortly see when discussing `smart pointers`. In the next section we will take a close look at move semantics and its benefits for memory management.
+
+    * External Resources
+        * Here are some good resources to learn more about Lvalues and Rvalues:
+
+        * How to crack the confusing world of lvalues and rvalues in C++? It is easy!
+        * [Lvalues and Rvalues (C++)](https://docs.microsoft.com/en-us/cpp/cpp/lvalues-and-rvalues-visual-cpp?view=msvc-160)
+
+    * `Rvalue` references and `std::move`
+
+        * In order to fully understand the concept of smart pointers in the next lesson, we first need to take a look at a powerful concept introduced with C++11 called `move semantics`.
+
+        * The last section on `lvalues`, `rvalues` and especially `rvalue` references is an important prerequisite for understanding the concept of moving data structures.
+
+        * Let us consider the function on the right which takes an `rvalue` reference as its parameter.
+
+        * ```cpp
+            #include <iostream>
+
+            void myFunction(int &&val)
+            {
+                std::cout << "val = " << val << std::endl;
+            }
+
+            int main()
+            {
+                myFunction(42);
+
+                return 0; 
+            }
+            ```
+
+        * The important message of the function argument of `myFunction` to the programmer is : The object that binds to the `rvalue` reference `&&val` is yours, it is not needed anymore within the scope of the caller (which is main). As discussed in the previous section on `rvalue` references, this is interesting from two perspectives:
+
+        * Passing values like this `improves performance` as no temporary copy needs to be made anymore and
+        * `ownership changes`, since the object the reference binds to has been abandoned by the caller and now binds to a handle which is available only to the receiver. This could not have been achieved with `lvalue` references as any change to the object that binds to the `lvalue` **reference** would also be visible on the caller side.    
+
+        * There is one more important aspect we need to consider: `rvalue` references are themselves `lvalues`. While this might seem confusing at first glance, it really is the mechanism that enables `move semantics`: A reference is always defined in a certain context (such as in the above example the variable val) . Even though the object it refers to (the number 42) may be disposable in the context it has been created (the main function), it is not disposable in the context of the reference . So within the scope of `myFunction`, `val` is an `lvalue` as it gives access to the memory location where the number 42 is stored.
+
+        * Note however that in the above code example we cannot pass an `lvalue` to `myFunction`, because an `rvalue` reference cannot bind to an `lvalue`. The code
+
+        * ```cpp
+            int i = 23;
+            myFunction(i)
+            ```
+
+        * would result in a compiler error. There is a solution to this problem though: The function `std::move` converts an `lvalue` into an `rvalue` (actually, to be exact, into an `xvalue`, which we will not discuss here for the sake of clarity), which makes it possible to use the `lvalue` as an argument for the function:
+
+        * ```cpp
+            int i = 23; 
+            myFunction(std::move(i));
+            ```
+        
+        * In doing this, we state that in the scope of `main` we will not use `i` anymore, which now exists only in the scope of `myFunction`. Using `std::move` in this way is one of the components of `move semantics`, which we will look into shortly. But first let us consider an example of the `Rule of Three`.
 
 
 
