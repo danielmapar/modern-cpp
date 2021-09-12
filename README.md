@@ -4170,6 +4170,8 @@ When working with classes it is often helpful to be able to refer to the current
 
         * Fortunately, in C++, the copying process can be controlled by defining a tailored copy constructor as well as a copy assignment operator. The copying process must be closely linked to the respective resource release mechanism and is often referred to as `copy-ownership` policy. Tailoring the copy constructor according to your memory management policy is an important choice you often need to make when designing a class. In the following, we will closely examine several well-known copy-ownership policies.
 
+        * It is important to point out that the `assignment operator` aka the `=` sign will not always invoke the copy constructor. the `assignment operator` only calls the copy constructor when you use it during initialization of an unexisting object: `MyMovableClass obj2 = obj1`. However, if you use the `=` operator after an object was initialized, then it will call the `assignment operator` overloaded method: `obj2 = obj3`. 
+
     * No copying policy
 
         * The simplest policy of all is to forbid copying and assigning class instances all together. This can be achieved by declaring, but not defining a private copy constructor and assignment operator (see NoCopyClass1 below) or alternatively by making both public and assigning the `delete` operator (see NoCopyClass2 below). The second choice is more explicit and makes it clearer to the programmer that copying has been actively forbidden. Let us have a look at a code example on the right that illustrates both cases.
@@ -4646,31 +4648,199 @@ When working with classes it is often helpful to be able to refer to the current
         
         * In doing this, we state that in the scope of `main` we will not use `i` anymore, which now exists only in the scope of `myFunction`. Using `std::move` in this way is one of the components of `move semantics`, which we will look into shortly. But first let us consider an example of the `Rule of Three`.
 
+    
+    * Let us consider the example to the right of a class which manages a block of dynamic memory and incrementally add new functionality to it. You will add the main function shown above later on in this notebook.
+
+    * ```cpp
+        #include <stdlib.h>
+        #include <iostream>
+
+        class MyMovableClass
+        {
+        private:
+            int _size;
+            int *_data;
+
+        public:
+            MyMovableClass(size_t size) // constructor
+            {
+                _size = size;
+                _data = new int[_size];
+                std::cout << "CREATING instance of MyMovableClass at " << this << " allocated with size = " << _size*sizeof(int)  << " bytes" << std::endl;
+            }
+
+            ~MyMovableClass() // 1 : destructor
+            {
+                std::cout << "DELETING instance of MyMovableClass at " << this << std::endl;
+                delete[] _data;
+            }
+        };
+        ```
+    
+    * In this class, a block of heap memory is allocated in the constructor and deallocated in the destructor. As we have discussed before, when either destructor, copy constructor or copy assignment operator are defined, it is good practice to also define the other two (known as the `Rule of Three`). While the compiler would generate default versions of the missing components, these would not properly reflect the memory management strategy of our class, so leaving out the manual
+
+    * So let us start with the copy constructor of `MyMovableClass`, which could look like the following:
+
+    * ```cpp
+        MyMovableClass(const MyMovableClass &source) // 2 : copy constructor
+        {
+            _size = source._size;
+            _data = new int[_size];
+            *_data = *source._data;
+            std::cout << "COPYING content of instance " << &source << " to instance " << this << std::endl;
+        }
+        ```
+
+    * Similar to an example in the section on copy semantics, the copy constructor takes an lvalue reference to the source instance, allocates a block of memory of the same size as in the source and then copies the data into its members (as a deep copy).
+
+    * Next, let us take a look at the copy assignment operator:
+
+    * ```cpp
+        MyMovableClass &operator=(const MyMovableClass &source) // 3 : copy assignment operator
+        {
+            std::cout << "ASSIGNING content of instance " << &source << " to instance " << this << std::endl;
+            if (this == &source)
+                return *this;
+            delete[] _data;
+            _data = new int[source._size];
+            *_data = *source._data;
+            _size = source._size;
+            return *this;
+        }
+        ```
+
+    * The `if-statement` at the top of the above implementation protects against self-assignment and is standard boilerplate code for the user-defined assignment operator. The remainder of the code is more or less identical to the copy constructor, apart from returning a reference to the own instance using this.
+
+    * You might have noticed that both copy constructor and assignment operator take a `const` reference to the source object as an argument, by which they promise that they won’ (and can’t) modify the content of source.
+
+    * We can now use our class to copy objects as shown in the following implementation of main:
+
+    * ```cpp
+        int main()
+        {
+            MyMovableClass obj1(10); // regular constructor
+            MyMovableClass obj2(obj1); // copy constructor
+            obj2 = obj1; // copy assignment operator
+
+            return 0;
+        }
+        ```
+
+    * In the main above, the object `obj1` is created using the regular constructor of `MyMovableClass`. Then, both the copy constructor as well as the assignment operator are used with the latter one not creating a new object but instead assigning the content of `obj1` to `obj2` as defined by our copying policy.
+
+    * The output of this textbook implementation of the Rule of Three looks like this:
+
+    * ```bash
+        CREATING instance of MyMovableClass at 0x7ffeefbff618 allocated with size = 40 bytes
+
+        COPYING content of instance 0x7ffeefbff618 to instance 0x7ffeefbff608
+
+        ASSIGNING content of instance 0x7ffeefbff618 to instance 0x7ffeefbff608
+
+        DELETING instance of MyMovableClass at 0x7ffeefbff608
+
+        DELETING instance of MyMovableClass at 0x7ffeefbff618
+        ```
+
+    * Limitations of Our Current Class Design
+
+        * Let us now consider one more way to instantiate `MyMovableClass` object by using `createObject()` function. Add the following function definition to the rule_of_three.cpp, outside the scope of the class MyMovableClass:
+
+        * ```cpp
+            MyMovableClass createObject(int size){
+                MyMovableClass obj(size); // regular constructor
+                return obj; // return MyMovableClass object by value
+            }
+            ```
+
+        * Note that when a function returns an object by value, the compiler creates a temporary object as an `rvalue`. Let's call this function inside `main` to create an `obj4` instance, as follows:
+
+            * ```cpp
+                int main(){
+                    // call to copy constructor, (alternate syntax)
+                    MyMovableClass obj3 = obj1;
+                    // Here, we are instantiating obj3 in the same statement; hence the copy assignment operator would not be called.
+
+                    MyMovableClass obj4 = createObject(10);
+                    // createObject(10) returns a temporary copy of the object as an rvalue, which is passed to the copy constructor.
 
 
+                    /*
+                    * You can try executing the statement below as well
+                    * MyMovableClass obj4(createObject(10));
+                    */
 
+                    return 0;
+                }
+                ```
 
+        * In the `main` above, the returned value of `createObject(10)` is passed to the copy constructor. The function `createObject()` returns an instance of `MyMovableClass` by value. In such a case, the compiler creates a temporary copy of the object as an `rvalue`, which is passed to the copy constructor.
 
+            * A special call to copy constructor
+            * Try compiling and then running the rule_of_three.cpp to notice that MyMovableClass obj4 = createObject(10); would not print the cout statement of copy constructor on the console. This is because the copy constructor is called on the temporary object.
 
+    * In our current class design, while creating `obj4`, the data is **dynamically allocated on the stack**, which is then copied from the temporary object to its target destination. This means that two expensive memory operations are performed with the first occurring during the creation of the **temporary rvalue** and the second during the execution of the copy constructor. The similar two expensive memory operations would be performed with the assignment operator if we execute the following statement inside `main`:
 
+    * ```cpp
+        MyMovableClass obj4 = createObject(10); // Don't write this statement if you have already written it before
+        obj4 = createObject(10); // call to copy assignment operator
+        ```
+    
+    * In the above call to copy assignment operator, it would first erase the memory of `obj4`, then reallocate it during the creation of the temporary object; and then copy the data from the temporary object to `obj4`.
 
+    * From a performance viewpoint, this code involves far too many copies, making it inefficient - especially with large data structures. Prior to `C++11`, the proper solution in such a case was to simply avoid returning large data structures by value to prevent the expensive and unnecessary copying process. With `C++11` however, there is a way we can optimize this and return even large data structures by value. The solution is the **move constructor** and the **Rule of Five**.
 
+    * The move constructor
 
+        * The basic idea to optimize the code from the last example is to "steal" the rvalue generated by the compiler during the return-by-value operation and move the expensive data in the source object to the target object - not by copying it but by redirecting the data handles. Moving data in such a way is always cheaper than making copies, which is why programmers are highly encouraged to make use of this powerful tool.
 
+        * The following diagram illustrates the basic principle of moving a resource from a source object to a destination object:
 
+        * ![moving_constructor](./images/moving_constructor.png)
 
+        * In order to achieve this, we will be using a construct called `move constructor`, which is similar to the copy constructor with the key difference being the re-use of existing data without unnecessarily copying it. In addition to the **move constructor**, there is also a **move assignment operator**, which we need to look at. 
 
+    * Just like the copy constructor, the move constructor builds an instance of a class using a source instance. The key difference between the two is that with the move constructor, the **source instance will no longer be usable afterwards**. Let us take a look at an implementation of the move constructor for our `MyMovableClass`:
 
+    * ```cpp
+        MyMovableClass(MyMovableClass &&source) // 4 : move constructor
+        {
+            std::cout << "MOVING (c’tor) instance " << &source << " to instance " << this << std::endl;
+            _data = source._data;
+            _size = source._size;
+            source._data = nullptr;
+            source._size = 0;
+        }
+        ```
+    
+    * In this code, the `move constructor` takes as its input an `rvalue` reference to a source object of the same class. In doing so, we are able to use the object within the scope of the `move constructor`. As can be seen, the implementation copies the data handle from source to target and immediately invalidates source after copying is complete. Now, this is responsible for the data and must also release memory on destruction - the ownership has been successfully changed (or moved) without the need to copy the data on the heap.
 
+    * The move assignment operator works in a similar way:
 
+        * ```cpp
+            MyMovableClass &operator=(MyMovableClass &&source) // 5 : move assignment operator
+            {
+                std::cout << "MOVING (assign) instance " << &source << " to instance " << this << std::endl;
+                if (this == &source)
+                    return *this;
 
+                delete[] _data;
 
+                _data = source._data;
+                _size = source._size;
 
+                source._data = nullptr;
+                source._size = 0;
 
+                return *this;
+            }
+            ```
 
+    * As with the move constructor, the data handle is copied from source to target which is coming in as an rvalue reference again. Afterwards, the data members of source are invalidated. The rest of the code is identical with the copy constructor we have already implemented.
 
+    * The Rule of Five
 
-
+        * By adding both the `move constructor` and the `move assignment operator` to our `MyMovableClass`, we have adhered to the Rule of Five. This rule is an extension of the **Rule of Three** which we have already seen and exists since the introduction of the C++11 standard. The **Rule of Five** is especially important in resource management, where unnecessary copying needs to be avoided due to limited resources and performance reasons. Also, all the STL container classes such as `std::vector` implement the **Rule of Five** and use move semantics for increased efficiency.
 
 
 
