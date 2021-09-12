@@ -54,6 +54,7 @@ public:
     source._data = nullptr;
     source._size = 0;
   }
+
   MyMovableClass &
   operator=(MyMovableClass &&source) // 5 : move assignment operator
   {
@@ -79,27 +80,46 @@ MyMovableClass createObject(int size) {
   return obj;               // return MyMovableClass object by value
 }
 
+void useObject(MyMovableClass obj) {
+  std::cout << "using object " << &obj << std::endl;
+}
+
 int main() {
+  MyMovableClass obj1(100); // constructor
 
-  // MyMovableClass obj1(10);
+  useObject(obj1);
 
-  // call to copy constructor, (alternate syntax)
-  // MyMovableClass obj3 = obj1;
-  // Here, we are instantiating obj3 in the same statement; hence the copy
-  // assignment operator would not be called.
-
-  MyMovableClass obj4 = createObject(10);
-  // createObject(10) returns a temporary copy of the object as an rvalue, which
-  // is passed to the copy constructor. However, the copy constructor does not
-  // work with rvalues
-
-  // MyMovableClass obj4 = createObject(10); // Don't write this statement if
-  // you have already written it before
-  // obj4 = createObject(11); // call to copy assignment operator
-
-  /*
-   * You can try executing the statement below as well */
-  // MyMovableClass obj4(createObject(10));
-
+  useObject(MyMovableClass(100));
   return 0;
 }
+
+// MyMovableClass obj1(10);
+
+// call to copy constructor, (alternate syntax)
+// MyMovableClass obj3 = obj1;
+// Here, we are instantiating obj3 in the same statement; hence the copy
+// assignment operator would not be called.
+
+// MyMovableClass obj4 = createObject(10);
+// createObject(10) returns a temporary copy of the object as an rvalue, which
+// is passed to the copy constructor. However, the copy constructor does not
+// work with rvalues
+
+// MyMovableClass obj4 = createObject(10); // Don't write this statement if
+// you have already written it before
+// obj4 = createObject(11); // call to copy assignment operator
+
+/*
+ * You can try executing the statement below as well */
+// MyMovableClass obj4(createObject(10));
+
+// MyMovableClass obj1(100); // constructor
+
+// obj1 = MyMovableClass(200); // move assignment operator
+
+// MyMovableClass obj2 = std::move(MyMovableClass(300)); // move constructor
+
+// std::cout << &obj2 << std::endl;
+
+// return 0;
+//}
