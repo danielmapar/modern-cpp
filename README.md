@@ -7304,3 +7304,1278 @@ When working with classes it is often helpful to be able to refer to the current
     * In this last example, the same 10 square roots are computed sequentially. Surprising, the overall runtime is at only `0.01 milliseconds` - an astounding difference to the `asynchronous` execution and a stark reminder that **starting and managing threads takes a significant amount of time**. It is therefore not a general advantage if computations are performed in `parallel`: **It must be carefully weighed with regard to the computational effort whether parallelization makes sense.**
 
     * ![threads-quiz](./images/thread-quiz.png) 
+
+* Avoiding Data Races
+
+    * Understanding data races
+
+    * One of the primary sources of error in concurrent programming are data races. They occur, when two concurrent `threads` are accessing the same memory location while at least one of them is modifying (the other thread might be reading or modifying). In this scenario, the value at the memory location is completely undefined. Depending on the system scheduler, the second thread will be executed at an unknown point in time and thus see different data at the memory location with each execution. Depending on the type of program, the result might be anything from a crash to a security breach when data is read by a thread that was not meant to be read, such as a user password or other sensitive information. Such an error is called a `data race` because two threads are racing to get access to a memory location first, with the content at the memory location depending on the result of the race.
+
+    * The following diagram illustrates the principle: One `thread` wants to increment a variable `x`, whereas the other thread wants to print the same variable. Depending on the timing of the program and thus the order of execution, the printed result might change each time the program is executed.
+
+    * ![thread-data](./images/thread-data.png) 
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <future>
+
+        class Vehicle
+        {
+        public:
+            //default constructor
+            Vehicle() : _id(0)
+            {
+                std::cout << "Vehicle #" << _id << " Default constructor called" << std::endl;
+            }
+
+            //initializing constructor
+            Vehicle(int id) : _id(id)
+            {
+                std::cout << "Vehicle #" << _id << " Initializing constructor called" << std::endl;
+            }
+
+            // setter and getter
+            void setID(int id) { _id = id; }
+            int getID() { return _id; }
+
+        private:
+            int _id;
+        };
+
+        int main()
+        {
+            // create instances of class Vehicle
+            Vehicle v0; // default constructor
+            Vehicle v1(1); // initializing constructor
+
+            // read and write name in different threads (which one of the above creates a data race?)
+            std::future<void> ftr = std::async([](Vehicle v) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(500)); // simulate work
+                v.setID(2);
+            }, v0);
+
+            v0.setID(3);
+
+            ftr.wait();
+            std::cout << "Vehicle #" << v0.getID() << std::endl;
+
+            return 0;
+        }
+        ```
+
+    * In this example, one safe way of passing data to a thread would be to carefully `synchronize` the two threads using either `join()` or the `promise-future` concept that can guarantee the availability of a result. Data races are always to be avoided. Even if nothing bad seems to happen, they are a bug and should always be treated as such. Another possible solution for the above example would be to make a copy of the original argument and pass the copy to the thread, thereby preventing the data race.
+
+* Passing data to a thread by value
+
+    * In the following example, an instance of the proprietary class `Vehicle` is created and passed to a thread by value, thus making a copy of it.
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <future>
+
+        class Vehicle
+        {
+        public:
+            //default constructor
+            Vehicle() : _id(0)
+            {
+                std::cout << "Vehicle #" << _id << " Default constructor called" << std::endl;
+            }
+
+            //initializing constructor
+            Vehicle(int id) : _id(id)
+            {
+                std::cout << "Vehicle #" << _id << " Initializing constructor called" << std::endl;
+            }
+
+            // setter and getter
+            void setID(int id) { _id = id; }
+            int getID() { return _id; }
+
+        private:
+            int _id;
+        };
+
+        int main()
+        {
+            // create instances of class Vehicle
+            Vehicle v0; // default constructor
+            Vehicle v1(1); // initializing constructor
+
+            // read and write name in different threads (which one of the above creates a data race?)
+            std::future<void> ftr = std::async([](Vehicle v) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(500)); // simulate work
+                v.setID(2);
+            }, v0);
+
+            v0.setID(3);
+
+            ftr.wait();
+            std::cout << "Vehicle #" << v0.getID() << std::endl;
+
+            return 0;
+        }
+        ```
+    
+    * Note that the class `Vehicle` has a default constructor and an initializing constructor. In the `main` function, when the instances `v0` and `v1` are created, each constructor is called respectively. Note that `v0` is passed by value to a `Lambda`, which serves as the thread function for `std::async`. Within the Lambda, the `id` of the `Vehicle` object is changed from the default (which is `0`) to a new value `2`. Note that the thread execution is paused for `500` milliseconds to guarantee that the change is performed well after the `main` thread has proceeded with its execution.
+
+    * In the `main` thread, immediately after starting up the worker thread, the `id` of `v0` is changed to `3`. Then, after waiting for the completion of the `thread`, the vehicle `id` is printed to the console. In this program, the output will always be the following:
+
+    * ```bash
+        Vehicle #0 Default constructor called
+        Vehicle #1 Initializing constructor called
+        Vehicle #3
+        ```
+
+    * Passing data to a `thread` in this way is a clean and safe method as there is no danger of a data race - at least when atomic data types such as integers, doubles, chars or booleans are passed.
+
+    * When passing a `complex data structure` however, there are sometimes pointer variables hidden within, that point to a (potentially) shared `data buffer` - which might cause a data race even though the programmer believes that the copied data will effectively preempt this. The next example illustrates this case by adding a new `member variable` to the `Vehicle` class, which is a pointer to a `string` object, as well as the corresponding `getter` and `setter` functions.
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <future>
+
+        class Vehicle
+        {
+        public:
+            //default constructor
+            Vehicle() : _id(0), _name(new std::string("Default Name"))
+            {
+                std::cout << "Vehicle #" << _id << " Default constructor called" << std::endl;
+            }
+
+            //initializing constructor
+            Vehicle(int id, std::string name) : _id(id), _name(new std::string(name))
+            {
+                std::cout << "Vehicle #" << _id << " Initializing constructor called" << std::endl;
+            }
+
+            // setter and getter
+            void setID(int id) { _id = id; }
+            int getID() { return _id; }
+            void setName(std::string name) { *_name = name; }
+            std::string getName() { return *_name; }
+
+        private:
+            int _id;
+            std::string *_name;
+        };
+
+        int main()
+        {
+            // create instances of class Vehicle
+            Vehicle v0;    // default constructor
+            Vehicle v1(1, "Vehicle 1"); // initializing constructor
+
+            // launch a thread that modifies the Vehicle name
+            std::future<void> ftr = std::async([](Vehicle v) {
+                // std::this_thread::sleep_for(std::chrono::milliseconds(500)); // simulate work
+                v.setName("Vehicle 2");
+            },v0);
+
+            v0.setName("Vehicle 3");
+
+            ftr.wait();
+            std::cout << v0.getName() << std::endl;
+
+            return 0;
+        }
+        ```
+    
+    * The output of the program looks like this:
+
+    * ```bash
+        Vehicle #0 Default constructor called
+        Vehicle #1 Initializing constructor called
+        Vehicle 2
+        ```
+    
+    * The basic program structure is mostly identical to the previous example with the object `v0` being copied by value when passed to the `thread` function. This time however, even though a copy has been made, the original object `v0` is modified, when the `thread` function sets the new `name`. This happens because the member `_name` is a pointer to a `string` and after copying, even though the pointer variable has been duplicated, it still points to the same location as its value (i.e. the `memory location`) has not changed. Note that when the delay is removed in the thread function, the console output varies between `"Vehicle 2" and "Vehicle 3"`, depending on the system scheduler. Such an error might go unnoticed for a long time. It could show itself well after a program has been shipped to the client - which is what makes this error type so treacherous.
+
+    * Classes from the standard template library usually implement a `deep copy` behavior by default (such as `std::vector`). When dealing with proprietary data types, this is not guaranteed. The only safe way to tell whether a data structure can be safely passed is by looking at its implementation: Does it contain only `atomic` data types or are there `pointers` somewhere? If this is the case, does the data structure implement the copy constructor (and the assignment operator) correctly? Also, if the data structure under scrutiny contains sub-objects, their respective implementation has to be analyzed as well to ensure that deep copies are made everywhere.
+
+    * Unfortunately, one of the primary concepts of object-oriented programming - `information hiding` - often prevents us from looking at the implementation details of a class - we can only see the interface, which does not tell us what we need to know to make sure that an object of the class may be safely passed by value.
+
+* Overwriting the copy constructor
+
+    * The problem with passing a proprietary class is that the standard `copy constructor` makes a `1:1` copy of all data members, including pointers to objects. This behavior is also referred to as "shallow copy". In the above example we would have liked (and maybe expected) a "deep copy" of the object though, i.e. a copy of the data to which the pointer refers. A solution to this problem is to create a proprietary `copy constructor` in the class `Vehicle`. The following piece of code overwrites the default `copy constructor` and can be modified to make a customized copy of the data members.
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <future>
+
+        class Vehicle
+        {
+        public:
+            //default constructor
+            Vehicle() : _id(0), _name(new std::string("Default Name"))
+            {
+                std::cout << "Vehicle #" << _id << " Default constructor called" << std::endl;
+            }
+
+            //initializing constructor
+            Vehicle(int id, std::string name) : _id(id), _name(new std::string(name))
+            {
+                std::cout << "Vehicle #" << _id << " Initializing constructor called" << std::endl;
+            }
+
+            // copy constructor 
+            Vehicle(Vehicle const &src)
+            {
+                // QUIZ: Student code STARTS here
+                _id = src._id;
+                if (src._name != nullptr)
+                {
+                    _name = new std::string;
+                    *_name = *src._name;
+                }
+                // QUIZ: Student code ENDS here
+                std::cout << "Vehicle #" << _id << " copy constructor called" << std::endl;
+            };
+
+            // setter and getter
+            void setID(int id) { _id = id; }
+            int getID() { return _id; }
+            void setName(std::string name) { *_name = name; }
+            std::string getName() { return *_name; }
+
+        private:
+            int _id;
+            std::string *_name;
+        };
+
+        int main()
+        {
+            // create instances of class Vehicle
+            Vehicle v0;    // default constructor
+            Vehicle v1(1, "Vehicle 1"); // initializing constructor
+
+            // launch a thread that modifies the Vehicle name
+            std::future<void> ftr = std::async([](Vehicle v) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(500)); // simulate work
+                v.setName("Vehicle 2");
+            },v0);
+
+            v0.setName("Vehicle 3");
+
+            ftr.wait();
+            std::cout << v0.getName() << std::endl;
+
+            return 0;
+        }
+        ```
+
+    * Expanding on the code example from above, please implement the code required for a deep copy so that the program always prints `"Vehicle 3"` to the console, regardless of the delay within the thread function.
+
+* Passing data using move semantics
+
+    * Even though a customized `copy constructor` can help us to avoid data races, it is also time (and memory) consuming. In the following, we will use `move semantics` to implement a more effective way of safely passing data to a `thread`.
+
+    * A `move constructor` enables the resources owned by an `rvalue` object to be moved into an `lvalue` without physically copying it. `Rvalue` references support the implementation of `move semantics`, which enables the programmer to write code that transfers resources (such as dynamically allocated memory) from one object to another.
+
+    * To make use of `move semantics`, we need to provide a `move constructor` (and optionally a `move assignment operator`). `Copy and assignment operations` whose sources are `rvalues` automatically take advantage of `move semantics`. Unlike the default `copy constructor` however, the compiler does not provide a default `move constructor`.
+
+    * To define a `move constructor` for a C++ class, the following steps are required:
+
+    * 1. Define an empty constructor method that takes an `rvalue` reference to the class type as its parameter
+
+    * ```cpp
+        // move constructor 
+        Vehicle(Vehicle && src)
+        {
+            //...
+            std::cout << "Vehicle #" << _id << " move constructor called" << std::endl;
+        };
+        ```
+
+    * 2. In the `move constructor`, assign the class data members from the source object to the object that is being constructed
+
+    * ```cpp
+        _id = src.getID();
+        _name = new std::string(src.getName());
+        ```
+    
+    * 3. Assign the data members of the source object to default values.
+
+    * ```cpp
+        src.setID(0);
+        src.setName("Default Name");    
+        ```
+    
+    * When launching the thread, the Vehicle object `v0` can be passed using `std::move()` - which calls the move constructor and invalidates the original object `v0` in the main thread.
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <future>
+
+        class Vehicle
+        {
+        public:
+            //default constructor
+            Vehicle() : _id(0), _name(new std::string("Default Name"))
+            {
+                std::cout << "Vehicle #" << _id << " Default constructor called" << std::endl;
+            }
+
+            //initializing constructor
+            Vehicle(int id, std::string name) : _id(id), _name(new std::string(name))
+            {
+                std::cout << "Vehicle #" << _id << " Initializing constructor called" << std::endl;
+            }
+
+            // copy constructor 
+            Vehicle(Vehicle const &src)
+            {
+                //...
+                std::cout << "Vehicle #" << _id << " copy constructor called" << std::endl;
+            };
+
+            // move constructor 
+            Vehicle(Vehicle && src)
+            {
+                _id = src.getID();
+                _name = new std::string(src.getName());
+
+                src.setID(0);
+                src.setName("Default Name");
+
+                std::cout << "Vehicle #" << _id << " move constructor called" << std::endl;
+            };
+
+            // setter and getter
+            void setID(int id) { _id = id; }
+            int getID() { return _id; }
+            void setName(std::string name) { *_name = name; }
+            std::string getName() { return *_name; }
+
+        private:
+            int _id;
+            std::string *_name;
+        };
+
+        int main()
+        {
+            // create instances of class Vehicle
+            Vehicle v0;    // default constructor
+            Vehicle v1(1, "Vehicle 1"); // initializing constructor
+
+            // launch a thread that modifies the Vehicle name
+            std::future<void> ftr = std::async([](Vehicle v) {
+                v.setName("Vehicle 2");
+            },std::move(v0));
+
+            ftr.wait();
+            std::cout << v0.getName() << std::endl;
+
+            return 0;
+        }
+        ```
+
+* Move semantics and uniqueness
+
+    * As with the above-mentioned `copy constructor`, passing by value is usually safe - provided that a deep copy is made of all the data structures within the object that is to be passed. With `move semantics` , we can additionally use the notion of uniqueness to prevent data races by default. In the following example, a `unique_pointer` instead of a `raw pointer` is used for the string member in the `Vehicle` class.
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <future>
+        #include <memory>
+
+        class Vehicle
+        {
+        public:
+            //default constructor
+            Vehicle() : _id(0), _name(new std::string("Default Name"))
+            {
+                std::cout << "Vehicle #" << _id << " Default constructor called" << std::endl;
+            }
+
+            //initializing constructor
+            Vehicle(int id, std::string name) : _id(id), _name(new std::string(name))
+            {
+                std::cout << "Vehicle #" << _id << " Initializing constructor called" << std::endl;
+            }
+
+            // move constructor with unique pointer
+            Vehicle(Vehicle && src) : _name(std::move(src._name))
+            {
+                // move id to this and reset id in source
+                _id = src.getID();
+                src.setID(0);
+
+                std::cout << "Vehicle #" << _id << " move constructor called" << std::endl;
+            };
+
+            // setter and getter
+            void setID(int id) { _id = id; }
+            int getID() { return _id; }
+            void setName(std::string name) { *_name = name; }
+            std::string getName() { return *_name; }
+
+        private:
+            int _id;
+            std::unique_ptr<std::string> _name;
+        };
+
+
+        int main()
+        {
+            // create instances of class Vehicle
+            Vehicle v0;    // default constructor
+            Vehicle v1(1, "Vehicle 1"); // initializing constructor
+
+            // launch a thread that modifies the Vehicle name
+            std::future<void> ftr = std::async([](Vehicle v) {
+                v.setName("Vehicle 2");
+            },std::move(v0));
+
+            ftr.wait();
+            std::cout << v0.getName() << std::endl; // this will now cause an exception
+
+            return 0;
+        }
+        ```
+    
+    * As can be seen, the `std::string` has now been changed to a `unique pointer`, which means that only a single reference to the memory location it points to is allowed. Accordingly, the `move constructor` transfers the `unique pointer` to the worker by using `std::move` and thus invalidates the pointer in the main thread. When calling `v0.getName()`, an exception is thrown, making it clear to the programmer that accessing the data at this point is not permissible - which is the whole point of using a `unique pointer` here as a data race will now be effectively prevented.
+
+    * The point of this example has been to illustrate that `move semantics` on its own is not enough to avoid data races. The key to thread safety is to use `move semantics` in conjunction with `uniqueness`. It is the responsibility of the programmer to ensure that pointers to objects that are moved between threads are unique.
+
+* Mutexes and Locks
+
+    * Using a Mutex To Protect Shared Data
+
+    * The mutex entity
+
+    * Until now, the methods we have used to pass data between threads were short-term and involved passing an argument `(the promise)` from a parent `thread` to a `worker` thread and then passing a result back to the parent thread (via the `future`) once it has become available. The `promise-future` construct is a **non-permanent communication channel for one-time usage**.
+
+    * We have seen that in order to avoid data races, we need to either forego accessing `shared data` or use it in `read-only` access without mutating the data. In this chapter, we want to look at a way to establish a stable `long-term` communication channel that allows for both `sharing` and `mutation`. Ideally, we would like to have a communication protocol that corresponds to voice communication over a radio channel, where the transmitter uses the expression `"over"` to indicate the end of the transmission to the receiver. By using such a protocol, sender and receiver can take turns in transmitting their data. In C++, this concept of taking turns can be constructed by an entity called a `"mutex"` - which stands for `MUtual EXclusion`.
+
+    * Recall that a `data race` requires simultaneous access from `two threads`. If we can guarantee that only a `single thread` at a time can access a particular memory location, `data races` would not occur. In order for this to work, we would need to establish a communication protocol. It is important to note that a `mutex` is not the solution to the data race problem per se but merely an enabler for a `thread-safe` communication protocol that has to be implemented and adhered to by the programmer.
+
+    * ![mutex](./images/mutex.png)
+
+    * Let us take a look at how this protocol works: Assuming we have a piece of memory (e.g. a `shared variable`) that we want to protect from simultaneous access, we can assign a `mutex` to be the guardian of this particular memory. It is important to understand that a `mutex` is bound to `the memory it protects`. A `thread 1` who wants to access the protected memory must `"lock"` the `mutex` first. After `thread 1` is `"under the lock"`, a `thread 2` is `blocked` from access to the `shared variable`, it can not acquire the `lock` on the `mutex` and is temporarily suspended by the system.
+
+    * Once the reading or writing operation of `thread 1` is complete, it must `"unlock"` the `mutex` so that `thread 2` can access the memory location. Often, the code which is executed `"under the lock"` is referred to as a `"critical section"`. It is important to note that also `read-only` access to the `shared memory` has to `lock` the `mutex` to prevent a data race - which would happen when another `thread`, who might be under the `lock` at that time, were to modify the data.
+
+    * When several `threads` were to try to acquire and `lock` the `mutex`, only one of them would be successful. All other `threads` would automatically be put on hold - just as cars waiting at an intersection for a green light (see the final project of this course). Once the `thread` who has succeeded in acquiring the `lock` had finished its job and `unlocked` the `mutex`, a queued `thread` waiting for access would be woken up and allowed to `lock` the `mutex` to proceed with his `read / write` operation. If all `threads` were to follow this protocol, a data race would effectively be avoided. Before we take a closer look at such a protocol, let us analyze a code example next.
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <vector>
+        #include <future>
+        #include<algorithm>
+
+        class Vehicle
+        {
+        public:
+            Vehicle(int id) : _id(id) {}
+
+        private:
+            int _id;
+        };
+
+        class WaitingVehicles
+        {
+        public:
+            WaitingVehicles() : _tmpVehicles(0) {}
+
+            // getters / setters
+            void printSize()
+            {
+                std::cout << "#vehicles = " << _tmpVehicles << std::endl;
+            }
+
+            // typical behaviour methods
+            void pushBack(Vehicle &&v)
+            {
+                //_vehicles.push_back(std::move(v)); // data race would cause an exception
+                int oldNum = _tmpVehicles;
+                std::this_thread::sleep_for(std::chrono::microseconds(1)); // wait deliberately to expose the data race
+                _tmpVehicles = oldNum + 1;
+            }
+
+        private:
+            std::vector<Vehicle> _vehicles; // list of all vehicles waiting to enter this intersection
+            int _tmpVehicles; 
+        };
+
+        int main()
+        {
+            std::shared_ptr<WaitingVehicles> queue(new WaitingVehicles); 
+            std::vector<std::future<void>> futures;
+            for (int i = 0; i < 1000; ++i)
+            {
+                Vehicle v(i);
+                futures.emplace_back(std::async(std::launch::async, &WaitingVehicles::pushBack, queue, std::move(v)));
+            }
+
+            std::for_each(futures.begin(), futures.end(), [](std::future<void> &ftr) {
+                ftr.wait();
+            });
+
+            queue->printSize();
+
+            return 0;
+        }
+        ```
+    
+    * This code builds on some of the classes we have seen in the previous lesson project - the concurrent traffic simulation. There is a class `Vehicle` that has a single data member (int `_id`). Also, there is a class `WaitingVehicles`, which is supposed to store a number of vehicles in an internal vector. Note that contrary to the lesson project, a vehicle is moved into the vector using an `rvalue` reference. Also note that the `push_back` function is commented out here. The reason for this is that we are trying to provoke a data race - leaving `push_back` active would cause the program to crash (we will comment it in later). This is also the reason why there is an auxiliary member `_tmpVehicles`, which will be used to count the number of `Vehicles` added via calls to `pushBack()`. This temporary variable will help us expose the data race without crashing the program.
+
+    * In `main()`, a `for-loop` is used to launch a large number of tasks who all try to add a newly created `Vehicle` to the queue. Running the program `synchronously` with launch option `std::launch::deferred` generates the following output on the console:
+
+    * `#vehicles = 1000`
+    
+    * Just as one would have expected, each task inserted an element into the queue with the total number of vehicles amounting to `1000`.
+
+    * Now let us enforce a concurrent behavior and change the launch option to `std::launch::async`. This generates the following output (with different results each time):
+
+        * `#vehicles = 191` then another execution gives `#vehicles = 179`
+    
+    * It seems that not all the vehicles could be added to the queue. But why is that? Note that in the thread function `"pushBack"` there is a call to `sleep_for`, which pauses the `thread` execution for a short time. This is the position where the data race occurs: First, the current value of `_tmpVehicles` is stored in a temporary variable `oldNum`. While the thread is paused, there might (and will) be changes to `_tmpVehicles` performed by other `threads`. When the execution resumes, the former value of `_tmpVehicles` is written back, thus invalidating the contribution of all the `threads` who had write access in the mean time. Interestingly, when `sleep_for` is commented out, the output of the program is the same as with `std::launch::deferred` - at least that will be the case for most of the time when we run the program. But once in a while, there might be a `scheduling constellation` which causes the bug to expose itself. Apart from understanding the data race, you should take as an advice that introducing deliberate time delays in the testing / debugging phase of development can help expose many concurrency bugs.
+
+* Using mutex to protect data
+
+    * In its simplest form, using a mutex consists of four straight-forward steps:
+
+        * Include the `<mutex>` header
+        * Create an `std::mutex`
+        * Lock the `mutex` using `lock()` before `read/write` is called
+        * Unlock the `mutex` after the `read/write` operation is finished using `unlock()`
+    
+    * In order to protect the access to `_vehicles` from being manipulated by several `threads` at once, a `mutex` has been added to the class as a `private data member`. In the `pushBack` function, the `mutex` is locked before a new element is added to the vector and unlocked after the operation is complete.
+
+    * Note that the `mutex` is also locked in the function `printSize` just before printing the size of the `vector`. The reason for this lock is two-fold: First, we want to prevent a `data race` that would occur when a `read-access` to the vector and a simultaneous `write access` (even when under the lock) would occur. And second, we want to exclusively reserve the `standard output` to the console for printing the vector size without other `threads` printing to it at the same time.
+
+    * When this code is executed, `1000` elements will be in the vector. By using a `mutex` to our shared resource, a data race has been effectively avoided.
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <vector>
+        #include <future>
+        #include <mutex>
+        #include<algorithm>
+
+        class Vehicle
+        {
+        public:
+            Vehicle(int id) : _id(id) {}
+
+        private:
+            int _id;
+        };
+
+        class WaitingVehicles
+        {
+        public:
+            WaitingVehicles() {}
+
+            // getters / setters
+            void printSize()
+            {
+                _mutex.lock();
+                std::cout << "#vehicles = " << _vehicles.size() << std::endl;
+                _mutex.unlock();
+            }
+
+            // typical behaviour methods
+            void pushBack(Vehicle &&v)
+            {
+                _mutex.lock();
+                _vehicles.emplace_back(std::move(v)); // data race would cause an exception
+                _mutex.unlock();
+            }
+
+        private:
+            std::vector<Vehicle> _vehicles; // list of all vehicles waiting to enter this intersection
+            std::mutex _mutex;
+        };
+
+        int main()
+        {
+            std::shared_ptr<WaitingVehicles> queue(new WaitingVehicles); 
+            std::vector<std::future<void>> futures;
+            for (int i = 0; i < 1000; ++i)
+            {
+                Vehicle v(i);
+                futures.emplace_back(std::async(std::launch::async, &WaitingVehicles::pushBack, queue, std::move(v)));
+            }
+
+            std::for_each(futures.begin(), futures.end(), [](std::future<void> &ftr) {
+                ftr.wait();
+            });
+
+            queue->printSize();
+
+            return 0;
+        }
+        ```
+
+* Using timed_mutex
+
+    * In the following, a short overview of the different available `mutex` types is given:
+
+        * `mutex`: provides the core functions `lock()` and `unlock()` and the non-blocking `try_lock()` method that returns if the `mutex` is not available.
+        * `recursive_mutex`: allows multiple acquisitions of the `mutex` from the same `thread`.
+        * `timed_mutex`: similar to `mutex`, but it comes with two more methods `try_lock_for()` and `try_lock_until()` that try to acquire the `mutex` for a period of time or until a moment in time is reached.
+        * `recursive_timed_mutex`: is a combination of `timed_mutex` and `recursive_mutex`.
+    
+    * Please adapt the code from the previous example (example_2.cpp) in a way that a `timed_mutex` is used. Also, in the function `pushBack`, please use the method try_lock_for instead of lock, which should be executed until a maximum number of attempts is reached (e.g. 3 times) or until it succeeds. When an attempt fails, you should print an error message to the console that also contains the respective vehicle id and then put the thread to sleep for an amount of time before the next attempt is trief. Also, to expose the timing issues in this example, please introduce a call to sleep_for with a delay of several milliseconds before releasing the lock on the mutex. When done, experiment with the timing parameters to see how many vehicles will be added to the vector in the end.
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <vector>
+        #include <future>
+        #include <mutex>
+
+        class Vehicle
+        {
+        public:
+            Vehicle(int id) : _id(id) {}
+            int getID() { return _id; }
+
+        private:
+            int _id;
+        };
+
+        class WaitingVehicles
+        {
+        public:
+            WaitingVehicles() {}
+
+            // getters / setters
+            void printSize()
+            {
+                _mutex.lock();
+                std::cout << "#vehicles = " << _vehicles.size() << std::endl;
+                _mutex.unlock();
+            }
+
+            // typical behaviour methods
+            void pushBack(Vehicle &&v)
+            {
+                for (size_t i = 0; i < 3; ++i)
+                {
+                    if (_mutex.try_lock_for(std::chrono::milliseconds(100)))
+                    {
+                        _vehicles.emplace_back(std::move(v));
+                        //std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                        _mutex.unlock();
+                        break;
+                    }
+                    else
+                    {
+                        std::cout << "Error! Vehicle #" << v.getID() << " could not be added to the vector" << std::endl;
+                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    }
+                }
+            }
+
+        private:
+            std::vector<Vehicle> _vehicles; // list of all vehicles waiting to enter this intersection
+            std::timed_mutex _mutex;
+        };
+
+        int main()
+        {
+            std::shared_ptr<WaitingVehicles> queue(new WaitingVehicles);
+            std::vector<std::future<void>> futures;
+            for (int i = 0; i < 1000; ++i)
+            {
+                Vehicle v(i);
+                futures.emplace_back(std::async(std::launch::async, &WaitingVehicles::pushBack, queue, std::move(v)));
+            }
+
+            std::for_each(futures.begin(), futures.end(), [](std::future<void> &ftr) {
+                ftr.wait();
+            });
+
+            queue->printSize();
+
+            return 0;
+        }
+        ```
+
+* Deadlock 1
+
+    * Using `mutexes` can significantly reduce the risk of data races as seen in the example above. But imagine what would happen if an exception was thrown while executing code in the critical section, i.e. between `lock` and `unlock`. In such a case, the `mutex` would remain `locked` indefinitely and no other `thread` could unlock it - the program would most likely freeze.
+
+    * Let us take a look at the following code example, which performs a division of numbers:
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <vector>
+        #include <future>
+        #include<algorithm>
+
+        double result;
+
+        void printResult(int denom)
+        {
+            std::cout << "for denom = " << denom << ", the result is " << result << std::endl;
+        }
+
+        void divideByNumber(double num, double denom)
+        {
+            try
+            {
+                // divide num by denom but throw an exception if division by zero is attempted
+                if (denom != 0) 
+                {
+                    result = num / denom;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1)); 
+                    printResult(denom);
+                }
+                else
+                {
+                    throw std::invalid_argument("Exception from thread: Division by zero!");
+                }
+            }
+            catch (const std::invalid_argument &e)
+            {
+                // notify the user about the exception and return
+                std::cout << e.what() << std::endl;
+                return; 
+            }
+        }
+
+        int main()
+        {
+            // create a number of threads which execute the function "divideByNumber" with varying parameters
+            std::vector<std::future<void>> futures;
+            for (double i = -5; i <= +5; ++i)
+            {
+                futures.emplace_back(std::async(std::launch::async, divideByNumber, 50.0, i));
+            }
+
+            // wait for the results
+            std::for_each(futures.begin(), futures.end(), [](std::future<void> &ftr) {
+                ftr.wait();
+            });
+
+            return 0;
+        }
+        ```
+    
+    * In this example, a number of tasks is started up in `main()` with the method `divideByNumber` as the `thread` function. Each `task` is given a different denominator and within `divideByNumber` a check is performed to avoid a division by zero. If `denom` should be zero, an `exception is thrown`. In the `catch-block`, the exception is caught, printed to the console and then the function returns immediately. The output of the program changes with each execution and might look like this:
+
+    * ```bash
+        for denom = -3, the result is -25
+        for denom = -2, the result is -50
+        for denom = -5, the result is -50
+        for denom = -4, the result is 50
+        Exception from thread: Division by zero!
+        for denom = -1, the result is 16.6667
+        for denom = 3, the result is 12.5
+        for denom = 1, the result is 10
+        for denom = 2, the result is 10
+        for denom = 4, the result is 10
+        for denom = 5, the result is 10
+        ```
+    
+    * As can easily be seen, the console output is totally mixed up and some results appear multiple times. There are several issues with this program, so let us look at them in turn:
+
+        * First, the thread function writes its result to a `global variable` which is passed to it by `reference`. This will cause a data race as illustrated in the last section. The `sleep_for` function exposes the data race clearly.
+        * Second, the result is printed to the console by several `threads` at the same time, causing the chaotic output.
+    
+    * As we have seen already, using a `mutex` can protect shared resources. So please modify the code in a way that both the console as well as the shared `global` variable result are properly protected.
+
+    * The problem you have just seen is one type of deadlock, which causes a program to freeze because one thread does not release the lock on the mutex while all other threads are waiting for access indefinitely. Let us now look at another type.
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <vector>
+        #include <future>
+        #include <mutex>
+
+        std::mutex mtx;
+        double result;
+
+        void printResult(int denom)
+        {
+            std::cout << "for denom = " << denom << ", the result is " << result << std::endl;
+        }
+
+        void divideByNumber(double num, double denom)
+        {
+            mtx.lock();
+            try
+            {
+                // divide num by denom but throw an exception if division by zero is attempted
+                if (denom != 0) 
+                {
+                    result = num / denom;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1)); 
+                    printResult(denom);
+                }
+                else
+                {
+                    throw std::invalid_argument("Exception from thread: Division by zero!");
+                }
+            }
+            catch (const std::invalid_argument &e)
+            {
+                // notify the user about the exception and return
+                std::cout << e.what() << std::endl;
+                return; // deadlock
+            } 
+            mtx.unlock();
+        }
+
+        int main()
+        {
+            // create a number of threads which execute the function "divideByNumber" with varying parameters
+            std::vector<std::future<void>> futures;
+            for (double i = -5; i <= +5; ++i)
+            {
+                futures.emplace_back(std::async(std::launch::async, divideByNumber, 50.0, i));
+            }
+
+            // wait for the results
+            std::for_each(futures.begin(), futures.end(), [](std::future<void> &ftr) {
+                ftr.wait();
+            });
+
+            return 0;
+        }
+        ```
+
+* Deadlock 2
+
+    * A second type of `deadlock` is a state in which two or more threads are blocked because each thread waits for the resource of the other `thread` to be released before releasing its resource. The result of the `deadlock` is a complete standstill. The `thread` and therefore usually the whole program is blocked forever. The following code illustrates the problem:
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <mutex>
+        
+        std::mutex mutex1, mutex2;
+        
+        void ThreadA()
+        {
+            // Creates deadlock problem
+            mutex2.lock();
+            std::cout << "Thread A" << std::endl;
+            mutex1.lock();
+            mutex2.unlock();
+            mutex1.unlock();
+        }
+        
+        void ThreadB()
+        {
+            // Creates deadlock problem
+            mutex1.lock();
+            std::cout << "Thread B" << std::endl;
+            mutex2.lock();
+            mutex1.unlock();
+            mutex2.unlock();
+        }
+        
+        void ExecuteThreads()
+        {
+            std::thread t1( ThreadA );
+            std::thread t2( ThreadB );
+        
+            t1.join();
+            t2.join();
+        
+            std::cout << "Finished" << std::endl;
+        }
+        
+        int main()
+        {
+            ExecuteThreads();
+        
+            return 0;
+        }
+        ```
+    
+    * When the program is executed, it produces the following output:
+
+    * `Thread AThread B`
+
+    * Notice that it does not print the `"Finished"` statement nor does it return - the program is in a `deadlock`, which it can never leave.
+
+    * Let us take a closer look at this problem:
+
+    * `ThreadA` and `ThreadB` both require access to the console. Unfortunately, they request this resource which is protected by two `mutexes` in different order. If the two `threads` work `interlocked` so that first `ThreadA` locks `mutex 1`, then `ThreadB` locks `mutex 2`, the program is in a `deadlock`: Each `thread` tries to lock the other `mutex` and needs to wait for its release, which never comes. The following figure illustrates the problem graphically.
+
+    * ![deadlock](./images/deadlock.png)
+
+    * One way to avoid such a `deadlock` would be to number all resources and require that processes request resources only in strictly increasing (or decreasing) order. Please try to manually rearrange the locks and unlocks in a way that the deadlock does not occur and the following text is printed to the console:
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <mutex>
+
+        std::mutex mutex1, mutex2;
+
+        void ThreadA()
+        {
+            // Solves deadlock problem
+            mutex1.lock();
+            std::cout << "Thread A" << std::endl;
+            mutex2.lock();
+            mutex2.unlock();
+            mutex1.unlock();
+        }
+
+        void ThreadB()
+        {
+            // Solves deadlock problem
+            mutex1.lock();
+            std::cout << "Thread B" << std::endl;
+            mutex2.lock();
+            mutex1.unlock();
+            mutex2.unlock();
+        }
+
+        void ExecuteThreads()
+        {
+            std::thread t1( ThreadA );
+            std::thread t2( ThreadB );
+
+            t1.join();
+            t2.join();
+
+            std::cout << "Finished" << std::endl;
+        }
+
+        int main()
+        {
+            ExecuteThreads();
+
+            return 0;
+        }
+        ```
+    
+    * As you have seen, avoiding such a deadlock is possible but requires time and a great deal of experience. In the next section, we will look at ways to avoid deadlocks - both of this type as well as the previous type, where a call to unlock the mutex had not been issued.
+
+* Using Locks to Avoid Deadlocks
+
+    * Lock Guard
+
+    * In the previous example, we have directly called the `lock()` and `unlock()` functions of a `mutex`. The idea of "working under the lock" is to block unwanted access by other `threads` to the same resource. Only the thread which acquired the `lock` can `unlock` the `mutex` and give all remaining `threads` the chance to acquire the `lock`. In practice however, direct calls to `lock()` should be avoided at all cost! Imagine that while working under the `lock`, a `thread` would throw an `exception` and exit the critical section without calling the `unlock` function on the `mutex`. In such a situation, the program would most likely freeze as no other `thread` could acquire the `mutex` any more. This is exactly what we have seen in the function `divideByNumber` from the previous example.
+
+    * We can avoid this problem by creating a `std::lock_guard` object, which keeps an associated `mutex` locked during the entire object life time. The lock is acquired on `construction` and released automatically on `destruction`. This makes it impossible to forget `unlocking` a critical section. Also, `std::lock_guard` guarantees `exception` safety because any critical section is automatically `unlocked` when an exception is thrown. In our previous example, we can simply replace `_mutex.lock()` and `_mutex.unlock()` with the following code:
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <vector>
+        #include <future>
+        #include <mutex>
+        #include<algorithm>
+
+        std::mutex mtx;
+        double result;
+
+        void printResult(int denom)
+        {
+            std::cout << "for denom = " << denom << ", the result is " << result << std::endl;
+        }
+
+        void divideByNumber(double num, double denom)
+        {
+            try
+            {
+                // divide num by denom but throw an exception if division by zero is attempted
+                if (denom != 0) 
+                {
+                    std::lock_guard<std::mutex> lck(mtx);
+                    
+                    result = num / denom;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1)); 
+                    printResult(denom);
+                }
+                else
+                {
+                    throw std::invalid_argument("Exception from thread: Division by zero!");
+                }
+            }
+            catch (const std::invalid_argument &e)
+            {
+                // notify the user about the exception and return
+                std::cout << e.what() << std::endl;
+                return; 
+            }
+        }
+
+        int main()
+        {
+            // create a number of threads which execute the function "divideByNumber" with varying parameters
+            std::vector<std::future<void>> futures;
+            for (double i = -5; i <= +5; ++i)
+            {
+                futures.emplace_back(std::async(std::launch::async, divideByNumber, 50.0, i));
+            }
+
+            // wait for the results
+            std::for_each(futures.begin(), futures.end(), [](std::future<void> &ftr) {
+                ftr.wait();
+            });
+
+            return 0;
+        }
+        ```
+    
+    * Note that there is no direct call to `lock` or `unlock` the `mutex` anymore. We now have a `std::lock_guard` object that takes the mutex as an argument and `locks` it at creation. When the method `divideByNumber` exits, the `mutex` is automatically `unlocked` by the `std::lock_guard` object as soon as it is destroyed - which happens, when the local variable gets out of scope.
+
+    * We can improve even further on this code by limiting the scope of the `mutex` to the section which accesses the critical resource. Please change the code in a way that the `mutex` is only locked for the time when result is modified and the result is printed.
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <vector>
+        #include <future>
+        #include <mutex>
+
+        std::mutex mtx;
+        double result;
+
+        void printResult(int denom)
+        {
+            std::cout << "for denom = " << denom << ", the result is " << result << std::endl;
+        }
+
+        void divideByNumber(double num, double denom)
+        {
+            try
+            {
+                // divide num by denom but throw an exception if division by zero is attempted
+                if (denom != 0) 
+                {
+                    std::lock_guard<std::mutex> lck(mtx);
+
+                    result = num / denom;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1)); 
+                    printResult(denom);
+                }
+                else
+                {
+                    throw std::invalid_argument("Exception from thread: Division by zero!");
+                }
+            }
+            catch (const std::invalid_argument &e)
+            {
+                // notify the user about the exception and return
+                std::cout << e.what() << std::endl;
+                return; 
+            }
+        }
+
+        int main()
+        {
+            // create a number of threads which execute the function "divideByNumber" with varying parameters
+            std::vector<std::future<void>> futures;
+            for (double i = -5; i <= +5; ++i)
+            {
+                futures.emplace_back(std::async(std::launch::async, divideByNumber, 50.0, i));
+            }
+
+            // wait for the results
+            std::for_each(futures.begin(), futures.end(), [](std::future<void> &ftr) {
+                ftr.wait();
+            });
+
+            return 0;
+        }
+        ```
+
+* Unique Lock
+
+    * The problem with the previous example is that we can only `lock` the `mutex` once and the only way to control `lock` and `unlock` is by invalidating the scope of the `std::lock_guard` object. But what if we wanted (or needed) a finer control of the locking mechanism?
+
+    * A more flexible alternative to `std::lock_guard` is `unique_lock`, that also provides support for more advanced mechanisms, such as `deferred locking`, `time locking`, `recursive locking`, `transfer of lock` ownership and use of condition variables (which we will discuss later). It behaves similar to `lock_guard` but provides much more flexibility, especially with regard to the timing behavior of the locking mechanism.
+
+    * Let us take a look at an adapted version of the code from the previous section above:
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <vector>
+        #include <future>
+        #include <mutex>
+        #include<algorithm>
+
+        std::mutex mtx;
+        double result;
+
+        void printResult(int denom)
+        {
+            std::cout << "for denom = " << denom << ", the result is " << result << std::endl;
+        }
+
+        void divideByNumber(double num, double denom)
+        {
+            std::unique_lock<std::mutex> lck(mtx);
+            try
+            {
+                // divide num by denom but throw an exception if division by zero is attempted
+                if (denom != 0) 
+                {   
+                    result = num / denom;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
+                    printResult(denom);
+                    lck.unlock();
+
+                    // do something outside of the lock
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
+
+                    lck.lock(); 
+                    // do someting else under the lock
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
+                }
+                else
+                {
+                    throw std::invalid_argument("Exception from thread: Division by zero!");
+                }
+            }
+            catch (const std::invalid_argument &e)
+            {
+                // notify the user about the exception and return
+                std::cout << e.what() << std::endl;
+                return; 
+            }
+        }
+
+        int main()
+        {
+            // create a number of threads which execute the function "divideByNumber" with varying parameters
+            std::vector<std::future<void>> futures;
+            for (double i = -5; i <= +5; ++i)
+            {
+                futures.emplace_back(std::async(std::launch::async, divideByNumber, 50.0, i));
+            }
+
+            // wait for the results
+            std::for_each(futures.begin(), futures.end(), [](std::future<void> &ftr) {
+                ftr.wait();
+            });
+
+            return 0;
+        }
+        ```
+    
+    * In this version of the code, `std::lock_guard` has been replaced with `std::unique_lock`. As before, the `lock` object `lck` will `unlock` the `mutex` in its `destructor`, i.e. when the function `divideByNumber` returns and `lck` gets out of scope. In addition to this automatic unlocking, `std::unique_lock` offers the additional flexibility to `engage` and `disengage` the `lock` as needed by manually calling the methods `lock()` and `unlock()`. This ability can greatly improve the performance of a concurrent program, especially when many `threads` are waiting for access to a `locked` resource. In the example, the `lock` is released before some non-critical work is performed (simulated by `sleep_for`) and re-engaged before some other work is performed in the critical section and thus under the `lock` again at the end of the function. This is particularly useful for optimizing performance and responsiveness when a significant amount of time passes between two accesses to a critical resource.
+
+    * The main advantages of using `std::unique_lock<>` over `std::lock_guard` are briefly summarized in the following. Using `std::unique_lock` allows you to…
+
+        * …construct an instance without an associated `mutex` using the default constructor
+        * …construct an instance with an associated `mutex` while leaving the `mutex` `unlocked` at first using the `deferred-locking constructor`
+        * …construct an instance that tries to `lock` a `mutex`, but leaves it `unlocked` if the `lock` failed using the `try-lock` constructor
+        * …construct an instance that tries to acquire a `lock` for either a specified time period or until a specified point in time
+
+    * Despite the advantages of `std::unique_lock<>` and `std::lock_guard` over accessing the `mutex` directly, however, the `deadlock` situation where two mutexes are accessed simultaneously (see the last section) will still occur.
+
+* Avoiding deadlocks with `std::lock()`
+
+    * In most cases, your code should only hold one lock on a `mutex` at a time. Occasionally you can nest your `locks`, for example by calling a subsystem that protects its internal data with a `mutex` while holding a lock on another `mutex`, but it is generally better to avoid `locks` on multiple `mutexes` at the same time, if possible. Sometimes, however, it is necessary to hold a `lock` on more than one `mutex` because you need to perform an operation on two different data elements, each protected by its own mutex.
+
+    * In the last section, we have seen that using several `mutexes` at once can lead to a `deadlock`, if the order of locking them is not carefully managed. To avoid this problem, the system must be told that both `mutexes` should be locked at the same time, so that one of the `threads` takes over both `locks` and **blocking is avoided**. That's what the `std::lock()` function is for - you provide a set of `lock_guard` or `unique_lock` objects and the system ensures that they are all locked when the function returns.
+
+    * In the following example, which is a version of the code we saw in the last section were `std::mutex` has been replaced with `std::lock_guard`.
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <mutex>
+        
+        std::mutex mutex1, mutex2;
+        
+        void ThreadA()
+        {
+            // Creates deadlock problem
+            std::lock_guard<std::mutex> lock2(mutex2);
+            std::cout << "Thread A" << std::endl;
+            std::lock_guard<std::mutex> lock1(mutex1);
+            
+        }
+        
+        void ThreadB()
+        {
+            // Creates deadlock problem
+            std::lock_guard<std::mutex> lock1(mutex1);
+            std::cout << "Thread B" << std::endl;
+            std::lock_guard<std::mutex> lock2(mutex2);
+        }
+        
+        void ExecuteThreads()
+        {
+            std::thread t1( ThreadA );
+            std::thread t2( ThreadB );
+        
+            t1.join();
+            t2.join();
+        
+            std::cout << "Finished" << std::endl;
+        }
+        
+        int main()
+        {
+            ExecuteThreads();
+        
+            return 0;
+        }
+        ```
+    
+    * Note that when executing this code, it still produces a deadlock, despite the use of `std::lock_guard`.
+
+    * In the following `deadlock-free` code, `std::lock` is used to ensure that the `mutexes` are always locked in the same order, regardless of the order of the arguments. Note that `std::adopt_lock` option allows us to use `std::lock_guard` on an already locked `mutex`.
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <mutex>
+        
+        std::mutex mutex1, mutex2;
+        
+        void ThreadA()
+        {
+            // Ensure that locks are always executed in the same order
+            std::lock(mutex1, mutex2);
+            std::lock_guard<std::mutex> lock2(mutex2, std::adopt_lock);
+            std::cout << "Thread A" << std::endl;
+            std::lock_guard<std::mutex> lock1(mutex1, std::adopt_lock);
+            
+        }
+        
+        void ThreadB()
+        {
+            std::lock(mutex1, mutex2);
+            std::lock_guard<std::mutex> lock1(mutex1, std::adopt_lock);
+            std::cout << "Thread B" << std::endl;
+            std::lock_guard<std::mutex> lock2(mutex2, std::adopt_lock);
+        }
+        
+        void ExecuteThreads()
+        {
+            std::thread t1( ThreadA );
+            std::thread t2( ThreadB );
+        
+            t1.join();
+            t2.join();
+        
+            std::cout << "Finished" << std::endl;
+        }
+        
+        int main()
+        {
+            ExecuteThreads();
+        
+            return 0;
+        }
+        ```
+    
+    * As a rule of thumb, programmers should try to avoid using several mutexes at once. Practice shows that this can be achieved in the majority of cases. For the remaining cases though, using `std::lock` is a safe way to avoid a deadlock situation.
