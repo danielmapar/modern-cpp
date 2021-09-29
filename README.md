@@ -8579,3 +8579,708 @@ When working with classes it is often helpful to be able to refer to the current
         ```
     
     * As a rule of thumb, programmers should try to avoid using several mutexes at once. Practice shows that this can be achieved in the majority of cases. For the remaining cases though, using `std::lock` is a safe way to avoid a deadlock situation.
+
+* Condition Variables and Message Queues 
+
+    * The Monitor Object Pattern
+
+    * In the previous sections we have learned that data protection is a critical element in concurrent programming. After looking at several ways to achieve this, we now want to build on these concepts to devise a method for a controlled and finely-grained data exchange between `threads` - a concurrent message queue. One important step towards such a construct is to implement a `monitor object`, which is a `design pattern` that `synchronizes` concurrent method execution to ensure that only **one method at a time runs within an object**. It also allows an object's methods to cooperatively schedule their execution sequences. The problem solved by this pattern is based on the observation that many applications contain objects whose methods are invoked concurrently by multiple client threads. These methods often modify the state of their objects, for example by adding data to an internal vector. For such concurrent programs to execute correctly, it is necessary to **synchronize and schedule** access to the objects very carefully. The idea of a monitor object is to `synchronize the access to an object's methods so that only one method can execute at any one time.`
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <vector>
+        #include <future>
+        #include <mutex>
+
+        class Vehicle
+        {
+        public:
+            Vehicle(int id) : _id(id) {}
+            int getID() { return _id; }
+
+        private:
+            int _id;
+        };
+
+        class WaitingVehicles
+        {
+        public:
+            WaitingVehicles() {}
+
+            void printIDs()
+            {
+                std::lock_guard<std::mutex> myLock(_mutex); // lock is released when myLock goes out of scope
+                for(auto &v : _vehicles)
+                    std::cout << "   Vehicle #" << v.getID() << " is now waiting in the queue" << std::endl;
+                
+            }
+
+            void pushBack(Vehicle &&v)
+            {
+                // perform vector modification under the lock
+                std::lock_guard<std::mutex> uLock(_mutex);
+                std::cout << "   Vehicle #" << v.getID() << " will be added to the queue" << std::endl; 
+                _vehicles.emplace_back(std::move(v));
+
+                // simulate some work
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            }
+
+        private:
+            std::vector<Vehicle> _vehicles; // list of all vehicles waiting to enter this intersection
+            std::mutex _mutex;
+        };
+
+        int main()
+        {
+            // create monitor object as a shared pointer to enable access by multiple threads
+            std::shared_ptr<WaitingVehicles> queue(new WaitingVehicles);
+
+            std::cout << "Spawning threads..." << std::endl;
+            std::vector<std::future<void>> futures;
+            for (int i = 0; i < 10; ++i)
+            {
+                // create a new Vehicle instance and move it into the queue
+                Vehicle v(i);
+                futures.emplace_back(std::async(std::launch::async, &WaitingVehicles::pushBack, queue, std::move(v)));
+            }
+
+            std::for_each(futures.begin(), futures.end(), [](std::future<void> &ftr) {
+                ftr.wait();
+            });
+
+            std::cout << "Collecting results..." << std::endl;
+            queue->printIDs();
+
+            return 0;
+        }
+        ```
+    
+    * In a previous section, we have looked at a code example which came pretty close to the functionality of a `monitor object` : the class `WaitingVehicles`.
+
+    * Let us modify and partially reimplement this class, which we want to use as a shared place where concurrent threads may store data, in our case instances of the class `Vehicle`. As we will be using the same `WaitingVehicles` object for all the threads, we have to pass it to them by `reference` - and as all threads will be writing to this object at the same time (which is a mutating operation) we will pass it as a `shared pointer`. Keep in mind that there will be many threads that will try to pass data to the `WaitingVehicles` object simultaneously and thus there is the danger of a data race.
+
+    * Before we take a look at the implementation of `WaitingVehicles`, let us look at the `main` function first where all the threads are spawned. We need a vector to store the futures as there is no data to be returned from the threads. Also, we need to call `wait()` on the futures at the end of `main()` so the program will not prematurely exit before the thread executions are complete.
+
+    * Instead of using `push_back` we will again be using `emplace_back` to construct the `futures` in place rather than moving them into the `vector`. After constructing a new `Vehicle` object within the `for-loop`, we start a new task by passing it a reference to the `pushBack` function, a `shared pointer` to our `WaitingVehicles` object and the newly created vehicle. Note that the latter is passed using `move semantics`.
+
+    * Now let us take a look at the implementation of the `WaitingVehicle` object.
+
+    * We need to enable it to process write requests from several threads at the same time. Every time a request comes in from a `thread`, the object needs to add the new data to its internal storage. Our storage container will be an `std::vector`. As we need to protect the vector from simultaneous access later, we also need to integrate a `mutex` into the class. As we already know, a `mutex` has the methods `lock` and `unlock`. In order to avoid data races, the `mutex` needs to be locked every time a thread wants to access the vector and it needs to be unlocked one the write operation is complete. In order to avoid a program freeze due to a missing unlock operation, we will be using a `lock guard` object, which automatically `unlocks once the lock object gets out of scope`.
+
+    * In our modified `pushBack` function, we will first create a `lock guard` object and pass it the `mutex` member variable. Now we can freely move the `Vehicle` object into our vector without the danger of a data race. At the end of the function, there is a call to `std::sleep_for`, which simulates some work and helps us to better expose potential concurrency problems. With each new `Vehicle` object that is passed into the queue, we will see an output to the console.
+
+    * Another function within the `WaitingVehicle` class is `printIDs()`, which loops over all the elements of the vector and prints their respective IDs to the console. One major difference between `pushBack()` and `printIDs()` is that the latter function accesses all `Vehicle` objects by looping through the vector while `pushBack` only accesses a single object - which is the newest addition to the `Vehicle` vector.
+
+    * When the program is executed, the following output is printed to the console:
+
+    * ```bash
+        Spawning threads...
+        Vehicle #0 will be added to the queue
+        Vehicle #3 will be added to the queue
+        Vehicle #2 will be added to the queue
+        Vehicle #1 will be added to the queue
+        Vehicle #4 will be added to the queue
+        Vehicle #5 will be added to the queue
+        Vehicle #6 will be added to the queue
+        Vehicle #8 will be added to the queue
+        Vehicle #7 will be added to the queue
+        Vehicle #9 will be added to the queue
+        Collecting results...
+        Vehicle #0 is now waiting in the queue
+        Vehicle #3 is now waiting in the queue
+        Vehicle #2 is now waiting in the queue
+        Vehicle #1 is now waiting in the queue
+        Vehicle #4 is now waiting in the queue
+        Vehicle #5 is now waiting in the queue
+        Vehicle #6 is now waiting in the queue
+        Vehicle #8 is now waiting in the queue
+        Vehicle #7 is now waiting in the queue
+        Vehicle #9 is now waiting in the queue
+        ```
+    
+    * As can be seen, the `Vehicle` objects are added one at a time, with all threads duly waiting for their turn. Then, once all `Vehicle` objects have been stored, the call to `printIDs` prints the entire content of the vector all at once.
+
+    * While the functionality of the `monitor object` we have constructed is an improvement over many other methods that allow passing data to threads, it has one significant disadvantage: The `main thread` has to wait until all `worker threads` have completed their jobs and only then can it access the added data in bulk. A system which is truly interactive however has to react to events as they arrive - it should not wait until all threads have completed their jobs but instead `act` immediately as soon as new data arrives. In the following, we want to add this functionality to our monitor object.
+
+* Creating an infinite polling loop
+
+    * While the `pushBack` method is used by the `threads` to add data to the monitor incrementally, the `main thread` uses `printSize` at the end to display all the results at once. Our goal is to change the code in a way that the `main thread` gets notified every time new data becomes available. But how can the `main thread` know whether new data has become available? The solution is to write a new method that regularly checks for the arrival of new data.
+
+    * In the code listed below, a new method `dataIsAvailable()` has been added while `printIDs()` has been removed. This method returns true if data is available in the vector and false otherwise. Once the `main thread` has found out via `dataIsAvailable()` that new data is in the `vector`, it can call the method `popBack()` to retrieve the data from the `monitor object`. Note that instead of copying the data, it is moved from the vector to the `main method`.
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <vector>
+        #include <future>
+        #include <mutex>
+
+        class Vehicle
+        {
+        public:
+            Vehicle(int id) : _id(id) {}
+            int getID() { return _id; }
+
+        private:
+            int _id;
+        };
+
+        class WaitingVehicles
+        {
+        public:
+            WaitingVehicles() {}
+
+            bool dataIsAvailable()
+            {
+                std::lock_guard<std::mutex> myLock(_mutex);
+                return !_vehicles.empty();
+            }
+
+            Vehicle popBack()
+            {
+                // perform vector modification under the lock
+                std::lock_guard<std::mutex> uLock(_mutex);
+
+                // remove last vector element from queue
+                Vehicle v = std::move(_vehicles.back());
+                _vehicles.pop_back();
+
+                return v; // will not be copied due to return value optimization (RVO) in C++
+            }
+
+            void pushBack(Vehicle &&v)
+            {
+                // simulate some work
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+                // perform vector modification under the lock
+                std::lock_guard<std::mutex> uLock(_mutex);
+
+                // add vector to queue
+                std::cout << "   Vehicle #" << v.getID() << " will be added to the queue" << std::endl;
+                _vehicles.emplace_back(std::move(v));
+            }
+
+        private:
+            std::vector<Vehicle> _vehicles; // list of all vehicles waiting to enter this intersection
+            std::mutex _mutex;
+        };
+
+        int main()
+        {
+            // create monitor object as a shared pointer to enable access by multiple threads
+            std::shared_ptr<WaitingVehicles> queue(new WaitingVehicles);
+
+            std::cout << "Spawning threads..." << std::endl;
+            std::vector<std::future<void>> futures;
+            for (int i = 0; i < 10; ++i)
+            {
+                // create a new Vehicle instance and move it into the queue
+                Vehicle v(i);
+                futures.emplace_back(std::async(std::launch::async, &WaitingVehicles::pushBack, queue, std::move(v)));
+            }
+
+            std::cout << "Collecting results..." << std::endl;
+            while (true)
+            {
+                if (queue->dataIsAvailable())
+                {
+                    Vehicle v = queue->popBack();
+                    std::cout << "   Vehicle #" << v.getID() << " has been removed from the queue" << std::endl;
+                }
+            }
+
+            std::for_each(futures.begin(), futures.end(), [](std::future<void> &ftr) {
+                ftr.wait();
+            });
+
+            std::cout << "Finished processing queue" << std::endl;
+
+            return 0;
+        }
+        ```
+    
+    * In the `main` thread, we will use an infinite `while-loop` to frequently poll the monitor object and check whether new data has become available. Contrary to before, we will now perform the read operation before the workers are done - so we have to integrate our loop before `wait()` is called on the `futures` at the end of `main()`. Once a new `Vehicle` object becomes available, we want to print it within the loop.
+
+    * When we execute the code, we get a console output similar to the one listed below:
+
+    * ```bash
+
+        ```
+
+    * From the output it can easily be seen, that adding and removing to and from the monitor object is now interleaved. When executed repeatedly, the order of the vehicles will most probably differ between executions.   
+
+* Writing a vehicle counter
+
+    * Note that the program in the example above did not terminate - even though no new `Vehicles` are added to the `queue`, the `infinite while-loop` will not exit.
+
+    * One possible solution to this problem would be to integrate a vehicle counter into the `WaitingVehicles` class, that is incremented each time a `Vehicle` object is added and decremented when it is removed. The `while-loop` could then be terminated as soon as the counter reaches zero. Please go ahead and implement this functionality - but remember to protect the counter as it will also be accessed by several threads at once. Also, it will be a good idea to introduce a small delay between spawning threads and collecting results. Otherwise, the queue will be empty by default and the program will terminate prematurely. At the end of main(), please also print the number of remaining Vehicle objects in the vector.
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <vector>
+        #include <future>
+        #include <mutex>
+
+        class Vehicle
+        {
+        public:
+            Vehicle(int id) : _id(id) {}
+            int getID() { return _id; }
+
+        private:
+            int _id;
+        };
+
+        class WaitingVehicles
+        {
+        public:
+            WaitingVehicles() : _numVehicles(0) {}
+
+            int getNumVehicles() 
+            { 
+                std::lock_guard<std::mutex> uLock(_mutex);
+                return _numVehicles; 
+            }
+
+            bool dataIsAvailable()
+            {
+                std::lock_guard<std::mutex> myLock(_mutex);
+                return !_vehicles.empty();
+            }
+
+            Vehicle popBack()
+            {
+                // perform vector modification under the lock
+                std::lock_guard<std::mutex> uLock(_mutex);
+
+                // remove last vector element from queue
+                Vehicle v = std::move(_vehicles.back());
+                _vehicles.pop_back();
+                --_numVehicles;
+
+                return v; // will not be copied due to return value optimization (RVO) in C++
+            }
+
+            void pushBack(Vehicle &&v)
+            {
+                // simulate some work
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+                // perform vector modification under the lock
+                std::lock_guard<std::mutex> uLock(_mutex);
+
+                // add vector to queue
+                std::cout << "   Vehicle #" << v.getID() << " will be added to the queue" << std::endl;
+                _vehicles.emplace_back(std::move(v));
+                ++_numVehicles;
+            }
+
+        private:
+            std::vector<Vehicle> _vehicles; // list of all vehicles waiting to enter this intersection
+            std::mutex _mutex;
+            int _numVehicles;
+        };
+
+        int main()
+        {
+            // create monitor object as a shared pointer to enable access by multiple threads
+            std::shared_ptr<WaitingVehicles> queue(new WaitingVehicles);
+
+            std::cout << "Spawning threads..." << std::endl;
+            std::vector<std::future<void>> futures;
+            for (int i = 0; i < 10; ++i)
+            {
+                // create a new Vehicle instance and move it into the queue
+                Vehicle v(i);
+                futures.emplace_back(std::async(std::launch::async, &WaitingVehicles::pushBack, queue, std::move(v)));
+            }
+
+            std::cout << "Collecting results..." << std::endl;
+            while (true)
+            {
+                if (queue->dataIsAvailable())
+                {
+                    Vehicle v = queue->popBack();
+                    std::cout << "   Vehicle #" << v.getID() << " has been removed from the queue" << std::endl;
+
+                    if(queue->getNumVehicles()<=0)
+                    {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                        break;
+                    }
+                }
+            }
+
+            std::for_each(futures.begin(), futures.end(), [](std::future<void> &ftr) {
+                ftr.wait();
+            });
+
+            std::cout << "Finished : " << queue->getNumVehicles() << " vehicle(s) left in the queue" << std::endl;
+
+            return 0;
+        }
+        ```
+
+* Building a Concurrent Message Queue
+
+    * Condition variables
+
+    * The polling loop we have used in the previous example has not been programmed optimally: As long as the program is running, the `while-loop` will keep the processor busy, constantly asking wether new data is available. In the following, we will look at a better way to solve this problem without putting too much load on the processor.
+
+    * The alternative to a polling loop is for the `main thread` to block and wait for a signal that new data is available. This would prevent the infinite loop from keeping the processor busy. We have already discussed a mechanism that would fulfill this purpose - the `promise-future` construct. The problem with futures is that they can only be used a single time. Once a future is ready and `get()` has been called, it can not be used any more. For our purpose, we need a signaling mechanism that can be re-used. The C++ standard offers such a construct in the form of "condition variables".
+
+    * A `std::condition_variable` has a method `wait()`, which blocks, when it is called by a `thread`. The condition variable is kept blocked until it is released by another `thread`. The release works via the method `notify_one()` or the `notify_all` method. The key difference between the two methods is that `notify_one` will only wake up a single waiting thread while `notify_all` will wake up all the waiting threads at once.
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <vector>
+        #include <future>
+        #include <mutex>
+
+        class Vehicle
+        {
+        public:
+            Vehicle(int id) : _id(id) {}
+            int getID() { return _id; }
+
+        private:
+            int _id;
+        };
+
+        class WaitingVehicles
+        {
+        public:
+            WaitingVehicles() {}
+
+            Vehicle popBack()
+            {
+                // perform vector modification under the lock
+                std::unique_lock<std::mutex> uLock(_mutex);
+                _cond.wait(uLock, [this] { return !_vehicles.empty(); }); // pass unique lock to condition variable
+
+                // remove last vector element from queue
+                Vehicle v = std::move(_vehicles.back());
+                _vehicles.pop_back();
+
+                return v; // will not be copied due to return value optimization (RVO) in C++
+            }
+
+            void pushBack(Vehicle &&v)
+            {
+                // simulate some work
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+                // perform vector modification under the lock
+                std::lock_guard<std::mutex> uLock(_mutex);
+
+                // add vector to queue
+                std::cout << "   Vehicle #" << v.getID() << " will be added to the queue" << std::endl;
+                _vehicles.push_back(std::move(v));
+                _cond.notify_one(); // notify client after pushing new Vehicle into vector
+            }
+
+        private:
+            std::mutex _mutex;
+            std::condition_variable _cond;
+            std::vector<Vehicle> _vehicles; // list of all vehicles waiting to enter this intersection
+        };
+
+        int main()
+        {
+            // create monitor object as a shared pointer to enable access by multiple threads
+            std::shared_ptr<WaitingVehicles> queue(new WaitingVehicles);
+
+            std::cout << "Spawning threads..." << std::endl;
+            std::vector<std::future<void>> futures;
+            for (int i = 0; i < 10; ++i)
+            {
+                // create a new Vehicle instance and move it into the queue
+                Vehicle v(i);
+                futures.emplace_back(std::async(std::launch::async, &WaitingVehicles::pushBack, queue, std::move(v)));
+            }
+
+            std::cout << "Collecting results..." << std::endl;
+            while (true)
+            {
+                // popBack wakes up when a new element is available in the queue
+                Vehicle v = queue->popBack();
+                std::cout << "   Vehicle #" << v.getID() << " has been removed from the queue" << std::endl;
+            }
+
+            std::for_each(futures.begin(), futures.end(), [](std::future<void> &ftr) {
+                ftr.wait();
+            });
+
+            std::cout << "Finished!" << std::endl;
+
+            return 0;
+        }
+        ```
+
+    * A condition variable is a low-level building block for more advanced communication protocols. It neither has a memory of its own nor does it remember notifications. Imagine that one `thread` calls `wait()` before another thread calls `notify()`, the condition variable works as expected and the first thread will wake up. Imagine the case however where the call order is reversed such that `notify()` is called before `wait()`, the notification will be lost and the thread will block indefinitely. So in more sophisticated communication protocols a condition variable should always be used in conjunction with another shared state that can be checked independently. Notifying a condition variable in this case would then only mean to proceed and check this other shared state.
+
+    * Let us pretend our shared variable was a boolean called `dataIsAvailable`. Now let’s discuss two scenarios for the protocol depending on who acts first, the producer or the consumer thread.
+
+    * ![thread_1](./images/thread_1.png)
+
+    * The consumer thread checks `dataIsAvailable()` and since it is `false`, the consumer thread blocks and waits on the condition variable. Later in time, the producer thread sets dataIsAvailable to true and calls notify_one on the condition variable. At this point, the consumer wakes up and proceeds with its work.
+
+    * ![thread_2](./images/thread_2.png)
+
+    * Here, the producer thread comes first, sets `dataIsAvailable()` to true and calls `notify_one`. Then, the consumer thread comes and checks `dataIsAvailable()` and finds it to be `true` - so it does not call `wait` and proceeds directly with its work. Even though the notification is lost, it does not cause a problem in this construct - the message has been passed successfully through `dataIsAvailable` and the `wait-lock` has been avoided.
+
+    * In an ideal (non-concurrent) world, these two scenarios would most probably be sufficient to describe to possible combinations. But in concurrent programming, things are not so easy. As seen in the diagrams, there are `four atomic` operations, two for each `thread`. So when executed often enough, all possible interleavings will show themselves - and we have to find the ones that still cause a problem.
+
+    * Here is one combination that will cause the program to lock:
+
+    * ![thread_3](./images/thread_3.png)
+
+    * The consumer thread reads `dataIsAvailable()`, which is `false` in the example. Then, the producer sets `dataIsAvailable()` to `true` and calls `notify`. Due to this unlucky interleaving of actions, the consumer thread calls `wait` because it has seen `dataIsAvailable()` as `false`. This is possible because the consumer thread tasks are not a joint atomic operation but may be separated by the scheduler and interleaved with some other tasks - in this case the two actions performed by the producer thread. The problem here is that after calling wait, the consumer thread will never wake up again. Also, as you may have noticed, the shared variable `dataReady` is not protected by a `mutex` here - which makes it even more likely that something will go wrong.
+
+    * One quick idea for a solution which might come to mind would be to perform the two operations `dataIsAvailable` and `wait` under a `locked mutex`. While this would effectively prevent the interleaving of tasks between different threads, it would also prevent another thread from ever modifying `dataIsAvailable` again.
+
+    * One reason for discussing these failed scenarios in such depth is to make you aware of the complexity of concurrent behavior - even with a simple protocol like the one we are discussing right now.
+
+    * So let us now look at the final solution to the above problems and thus a working version of our communication protocol.
+
+    * ![thread_4](./images/thread_4.png)
+
+    * As seen above, we are closing the gap between reading the state and entering the wait. We are reading the state under the lock (red bar) and we call `wait` still under the `lock`. Then, we let `wait` **release the lock** and enter the `wait` state in one atomic step. This is only possible because the `wait()` method is able to take a `lock` as an argument. The `lock` that we can pass to `wait` however is not the `lock_guard` we have been using so often until now but instead it has to be a lock that can be temporarily `unlocked` inside `wait` - a suitable `lock` for this purpose would be the `unique_lock` type which we have discussed in the previous section.
+
+* Implementing the WaitingVehicles queue
+
+    * Now that we have all the ingredients to implement the concurrent `queue` to store waiting `Vehicle` objects, let us start with the implementation according to the diagram above.
+
+    * The first step is to add a condition variable to `WaitingVehicles` class as a private member - just as the `mutex`.
+
+    * ```cpp
+        private:
+            std::mutex _mutex;
+            std::condition_variable _cond;
+        ```
+
+    * The next step is to notify the client after pushing a new `Vehicle` into the vector.
+
+    *  ```cpp
+        // add vector to queue
+        std::cout << "   Vehicle #" << v.getID() << " will be added to the queue" << std::endl;
+        _vehicles.push_back(std::move(v));
+        _cond.notify_one(); // notify client after pushing new Vehicle into vector
+        ```
+
+    * In the method `popBack`, we need to create the `lock` first - it can not be a `lock_guard` any more as we need to pass it to the condition variable - to its method `wait.` Thus it must be a `unique_lock`. Now we can enter the `wait` state while at same time releasing the `lock`. It is only inside `wait`, that the `mutex` is temporarily `unlocked` - which is a very important point to remember: We are holding the `lock` before AND after our call to `wait` - which means that we are free to access whatever data is protected by the `mutex`. In our example, this will be `dataIsAvailable()`.
+
+    * Before we continue, we need to discuss the problem of "spurious wake-ups": Once in a while, the system will - for no obvious reason - `wake up a thread`. If such a spurious wake-up happened with taking proper precautions, we would issue `wait` without new data being available (because the wake-up has not been caused by the condition variable but by the system in this case). To prevent the call to wait in this case, we have to modify the code slightly:
+
+    * ![code1](./images/code1.png)
+
+    * (continued) In this code, even after a spurious wake-up, we are now checking wether data really is available. If so, we would be issuing the call to `wait` on the condition variable. And only if we are inside wait, may other threads modify and access `dataIsAvailable`.
+
+    * (If the vector is `empty`, `wait` is called. When the thread wakes up again, the condition is immediately re-checked and - in case it has not been a spurious wake-up we can continue with our job and retrieve the vector.
+
+    * We can further simplify this code by letting the `wait()` function do the testing as well as the looping for us. Instead of the while loop, we can just pass a `Lambda` to `wait()`, which repeatedly checks wether the vector contains elements (thus the inverted logical expression):
+
+    * ![code2](./images/code2.png)
+
+    * (continued) When `wait()` finishes, we are guaranteed to find a new element in the vector this time. Also, we are still holding the `lock` and thus no other thread is able to access the vector - so there is no danger of a data race in this situation. As soon as we are out of scope, the lock will be automatically released.
+
+    * In the `main()` function, there is still the polling loop that infinitely queries the availability of new `Vehicle` objects. But contrary to the example before, a call to popBack now puts the `main()` thread into a `wait` state and only resumes when new data is available - thus significantly reducing the load to the processor.
+
+    * Let us now take a look at the complete code…
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <vector>
+        #include <future>
+        #include <mutex>
+
+        class Vehicle
+        {
+        public:
+            Vehicle(int id) : _id(id) {}
+            int getID() { return _id; }
+
+        private:
+            int _id;
+        };
+
+        class WaitingVehicles
+        {
+        public:
+            WaitingVehicles() {}
+
+            Vehicle popBack()
+            {
+                // perform vector modification under the lock
+                std::unique_lock<std::mutex> uLock(_mutex);
+                _cond.wait(uLock, [this] { return !_vehicles.empty(); }); // pass unique lock to condition variable
+
+                // remove last vector element from queue
+                Vehicle v = std::move(_vehicles.back());
+                _vehicles.pop_back();
+
+                return v; // will not be copied due to return value optimization (RVO) in C++
+            }
+
+            void pushBack(Vehicle &&v)
+            {
+                // simulate some work
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+                // perform vector modification under the lock
+                std::lock_guard<std::mutex> uLock(_mutex);
+
+                // add vector to queue
+                std::cout << "   Vehicle #" << v.getID() << " will be added to the queue" << std::endl;
+                _vehicles.push_back(std::move(v));
+                _cond.notify_one(); // notify client after pushing new Vehicle into vector
+            }
+
+        private:
+            std::mutex _mutex;
+            std::condition_variable _cond;
+            std::vector<Vehicle> _vehicles; // list of all vehicles waiting to enter this intersection
+        };
+
+        int main()
+        {
+            // create monitor object as a shared pointer to enable access by multiple threads
+            std::shared_ptr<WaitingVehicles> queue(new WaitingVehicles);
+
+            std::cout << "Spawning threads..." << std::endl;
+            std::vector<std::future<void>> futures;
+            for (int i = 0; i < 10; ++i)
+            {
+                // create a new Vehicle instance and move it into the queue
+                Vehicle v(i);
+                futures.emplace_back(std::async(std::launch::async, &WaitingVehicles::pushBack, queue, std::move(v)));
+            }
+
+            std::cout << "Collecting results..." << std::endl;
+            while (true)
+            {
+                // popBack wakes up when a new element is available in the queue
+                Vehicle v = queue->popBack();
+                std::cout << "   Vehicle #" << v.getID() << " has been removed from the queue" << std::endl;
+            }
+
+            std::for_each(futures.begin(), futures.end(), [](std::future<void> &ftr) {
+                ftr.wait();
+            });
+
+            std::cout << "Finished!" << std::endl;
+
+            return 0;
+        }
+        ```
+    
+    * … and at the console output it produces:
+
+    * ```bash
+        Spawning threads...
+        Collecting results...
+        Message 0 has been sent to the queue
+        Message #0 has been removed from the queue
+        Message 2 has been sent to the queue
+        Message #2 has been removed from the queue
+        Message 1 has been sent to the queue
+        Message 6 has been sent to the queue
+        Message 7 has been sent to the queue
+        Message 8 has been sent to the queue
+        Message 9 has been sent to the queue
+        Message 3 has been sent to the queue
+        Message 4 has been sent to the queue
+        Message 5 has been sent to the queue
+        Message #5 has been removed from the queue
+        Message #4 has been removed from the queue
+        Message #3 has been removed from the queue
+        Message #9 has been removed from the queue
+        Message #8 has been removed from the queue
+        Message #7 has been removed from the queue
+        Message #6 has been removed from the queue
+        Message #1 has been removed from the queue
+        ```
+    
+    * Better code
+
+    * ```cpp
+        #include <iostream>
+        #include <thread>
+        #include <queue>
+        #include <future>
+        #include <mutex>
+
+        template <class T>
+        class MessageQueue
+        {
+        public:
+            T receive()
+            {
+                // perform queue modification under the lock
+                std::unique_lock<std::mutex> uLock(_mutex);
+                _cond.wait(uLock, [this] { return !_messages.empty(); }); // pass unique lock to condition variable
+
+                // remove last vector element from queue
+                T msg = std::move(_messages.back());
+                _messages.pop_back();
+
+                return msg; // will not be copied due to return value optimization (RVO) in C++
+            }
+
+            void send(T &&msg)
+            {
+                // simulate some work
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+                // perform vector modification under the lock
+                std::lock_guard<std::mutex> uLock(_mutex);
+
+                // add vector to queue
+                std::cout << "   Message " << msg << " has been sent to the queue" << std::endl;
+                _messages.push_back(std::move(msg));
+                _cond.notify_one(); // notify client after pushing new Vehicle into vector
+            }
+
+        private:
+            std::mutex _mutex;
+            std::condition_variable _cond;
+            std::deque<T> _messages;
+        };
+
+        int main()
+        {
+            // create monitor object as a shared pointer to enable access by multiple threads
+            std::shared_ptr<MessageQueue<int>> queue(new MessageQueue<int>);
+
+            std::cout << "Spawning threads..." << std::endl;
+            std::vector<std::future<void>> futures;
+            for (int i = 0; i < 10; ++i)
+            {
+                int message = i;
+                futures.emplace_back(std::async(std::launch::async, &MessageQueue<int>::send, queue, std::move(message)));
+            }
+
+            std::cout << "Collecting results..." << std::endl;
+            while (true)
+            {
+                int message = queue->receive();
+                std::cout << "   Message #" << message << " has been removed from the queue" << std::endl;
+            }
+
+            std::for_each(futures.begin(), futures.end(), [](std::future<void> &ftr) {
+                ftr.wait();
+            });
+
+            std::cout << "Finished!" << std::endl;
+
+            return 0;
+        }
+        ```
+    
+    * A message queue is an effective and very useful mechanism to enable a safe and reusable communication channel between threads. In the final project, we will use shorty use this construct to integrate another component into our simulation - traffic lights at intersections.
