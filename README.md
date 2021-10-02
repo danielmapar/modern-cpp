@@ -18,7 +18,7 @@
         * Reason More people know the standard library. It is more likely to be stable, well-maintained, and widely available than your own code or most other libraries.
 
 * Namespace
-    * Standard Library functions and classes exist in the `std::` namespace. `std::vector`, for example, refers to the vector class within the Standard Library. Typically, in order to use a Standard Library feature we must both include the necessary header file (e.g. #include <vector>) and also namespace the class with `std::` (e.g. `std::vector`).
+    * Standard Library functions and classes exist in the `std::` namespace. `std::vector`, for example, refers to the vector class within the Standard Library. Typically, in order to use a Standard Library feature we must both include the necessary header file (e.g. `#include <vector>`) and also namespace the class with `std::` (e.g. `std::vector`).
 
 * Compilers
 
@@ -37,6 +37,9 @@
         * The LLVM Project is a collection of modular and reusable compiler and toolchain technologies. Despite its name, LLVM has little to do with traditional virtual machines. The name "LLVM" itself is not an acronym; it is the full name of the project.
 
         * LLVM began as a research project at the University of Illinois, with the goal of providing a modern, SSA-based compilation strategy capable of supporting both static and dynamic compilation of arbitrary programming languages. Since then, LLVM has grown to be an umbrella project consisting of a number of subprojects, many of which are being used in production by a wide variety of commercial and open source projects as well as being widely used in academic research. Code in the LLVM project is licensed under the "Apache 2.0 License with LLVM exceptions"
+            * Dynamic compiling means that the language is compiled to machine code while the program is being executed, not before. This allows, for example, just-in-time optimization - the code is optimized while the application is running. A JIT optimizer has the advantage that it has much more reliable information about which branches of the code are used most often and how they are usually used, because it can observe the application in action before applying optimizations.
+
+            * Dynamic compilation is a problem for automatic benchmarking, because multiple measurements of the same program code section can compare completely different machine code interpretations because the optimizer has decided to change the implementation between two runs.
     
     * Linking
         * ![linker](images/linker.png) 
@@ -62,7 +65,7 @@
     
     * CMake
 
-        * [CMake](https://cmake.org/) is a built tool that facilitates **cross-platform** builds, so that it is straightforward to build the same source code on Linux, macOS, Windows, or any other operating system. `CMake` relies on a CMakeLists.txt file, which configures appropriate cross-platform targets.
+        * [CMake](https://cmake.org/) is a built tool that facilitates **cross-platform** builds, so that it is straightforward to build the same source code on Linux, macOS, Windows, or any other operating system. `CMake` relies on a `CMakeLists.txt` file, which configures appropriate cross-platform targets.
 
         * Building a `CMakeLists.txt` file can be a bit daunting, but `CMake` provides a helpful tutorial.
 
@@ -72,10 +75,10 @@
 
     * You are welcome to write all of your code in Udacity's web-based Workspaces. If, however, you prefer to work locally on your machine, you will need to install certain software.
 
-    * llvm and clang (this tutorial uses this compiler)
+    * `llvm` and `clang` (this tutorial uses this compiler)
         * [Download and instal](https://releases.llvm.org/download.html)
 
-    * g++, gdb, make
+    * `g++, gdb, make`
 
         * MacOS
 
@@ -185,7 +188,7 @@ C++ has several "primitive" variable types, which are things like `int`s (intege
 
 * In order to write the A* search algorithm, you will need a grid or "board" to search through. We'll be working with this board throughout the remaining exercises, and we'll start by storing a hard-coded board in the main function. In later exercises, you will write code to read the board from a file.
 
-    * Note: you will need to include the vector library, just as iostream is included. You will also need to use the namespace std::vector if you want to write vector rather than std::vector in your code.
+    * Note: you will need to include the vector library, just as iostream is included. You will also need to use the namespace `std::vector` if you want to write `vector` rather than `std::vector` in your code.
 
     * This exercise will be ungraded, but if you get stuck, you can find the solution in solution.cpp. Finally, if you feel a little crowded in the editor below and need more space to work, you can click the "Expand" button in the lower left corner.
 
@@ -256,15 +259,14 @@ In the cell below, there is a simple function to add two numbers and return the 
 * In C++, you can use the `std::ifstream` object to handle input file streams. To do this, you will need to include the header file that provides the file streaming classes: `<fstream>`. 
 
 * Once the `<fstream>` header is included, a new input stream object can be declared and initialized using a file path `path`:
-```cpp
-std::ifstream my_file;
-my_file.open(path);
-```
+    * ```cpp
+        std::ifstream my_file;
+        my_file.open(path);
+        ```
 
 * Alternatively, the declaration and initialization can be done in a single line as follows:
-```
-std::ifstream my_file(path);
-```
+    * `std::ifstream my_file(path);`
+
 * C++ `ifstream` objects can also be used as a boolean to check if the stream has been created successfully. If the stream were to initialize successfully, then the `ifstream` object would evaluate to `true`. If there were to be an error opening the file or some other error creating the stream, then the `ifstream` object would evaluate to `false`.
 
 * The following cell creates an input stream from the file `"files/1.board"`:
@@ -671,9 +673,9 @@ To avoid a single file from becomming cluttered with declarations and definition
         #define HEADER_EXAMPLE_H
     ```
     
-    * at the top of the header, along with an #endif at the end. This is called an **"include guard"**. Since the header will be included into another file, and #include just pastes contents into a file, the include guard prevents the same file from being pasted multiple times into another file. This might happen if multiple files include the same header, and then are all included into the same main.cpp, for example. The ifndef checks if HEADER_EXAMPLE_H has not been defined in the file already. If it has not been defined yet, then it is defined with #define HEADER_EXAMPLE_H, and the rest of the header is used. If HEADER_EXAMPLE_H has already been defined, then the preprocessor does not enter the ifndef block. Note: There are other ways to do this. Another common way is to use an **#pragma** oncepreprocessor directive, but we won't cover that in detail here. See this Wikipedia article for examples.
+    * at the top of the header, along with an `#endif` at the end. This is called an **"include guard"**. Since the header will be included into another file, and `#include` just pastes contents into a file, the include guard prevents the same file from being pasted multiple times into another file. This might happen if multiple files include the same header, and then are all included into the same main.cpp, for example. The `ifndef` checks if HEADER_EXAMPLE_H has not been defined in the file already. If it has not been defined yet, then it is defined with #define HEADER_EXAMPLE_H, and the rest of the header is used. If HEADER_EXAMPLE_H has already been defined, then the preprocessor does not enter the ifndef block. Note: There are other ways to do this. Another common way is to use an **#pragma** oncepreprocessor directive, but we won't cover that in detail here. See this Wikipedia article for examples.
 
-    * The addition of #include guards to a header file is one way to make that file idempotent. Another construct to combat double inclusion is #pragma once, which is non-standard but nearly universally supported among C and C++ compilers.
+    * The addition of #include guards to a header file is one way to make that file idempotent. Another construct to combat double inclusion is `#pragma once`, which is non-standard but nearly universally supported among C and C++ compilers.
 
 ### CMake and Make
 
@@ -1564,6 +1566,12 @@ When working with classes it is often helpful to be able to refer to the current
         * Private members of a class are accessible only from within other member functions of the same class (or from their "friends", which we’ll talk about later).
 
         * There is a third access modifier called `protected`, which implies that members are accessible from other member functions of the same class (or from their "friends"), and also from members of their derived classes. We'll also discuss about derived classes later, when we learn about inheritance.
+
+        * The differences between a class and a struct in C++ is:
+
+        * `struct` members and base classes/structs are `public` by default.
+        * `class` members and base classes/struts are `private` by default.
+        * Both classes and structs can have a mixture of `public, protected and private` members, can use inheritance and can have member functions.
 
     * Accessors And Mutators
 
@@ -2775,6 +2783,7 @@ When working with classes it is often helpful to be able to refer to the current
             ```
 
     * Multiple Inheritance
+
         * In this exercise, you'll get some practical experience with multiple inheritance. If you have class Animal and another class Pet, then you can construct a class Dog, which inherits from both of these base classes. In doing this, you are able to incorporate attributes of multiple base classes.
 
         * The Core Guidelines have some worthwhile recommendations about how and when to use multiple inheritance:
