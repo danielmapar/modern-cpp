@@ -8815,9 +8815,7 @@ When working with classes it is often helpful to be able to refer to the current
 
     * When we execute the code, we get a console output similar to the one listed below:
 
-    * ```bash
-
-        ```
+    * ![thread_spawning](./images/thread_spawning.png) 
 
     * From the output it can easily be seen, that adding and removing to and from the monitor object is now interleaved. When executed repeatedly, the order of the vehicles will most probably differ between executions.   
 
