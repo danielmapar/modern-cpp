@@ -3952,7 +3952,7 @@ When working with classes it is often helpful to be able to refer to the current
             delete: Memory is freed again 
             ```
 
-    * Interestingly, the memory requirement is larger than expected: With `new`, the block size was 4 bytes, which is exactly the space required for a single integer. Thus, with three integers, it should now be 12 bytes instead of 20 bytes. The reason for this is the memory allocation overhead that the **compiler needs to keep track of the allocated blocks of memory** - which in itself consumes memory. If we change the above call to e.g. new MyClass[100](), we will see that the overhead of 8 bytes does not change:
+    * Interestingly, the memory requirement is larger than expected: With `new`, the block size was 4 bytes, which is exactly the space required for a single integer. Thus, with three integers, it should now be 12 bytes instead of 20 bytes. The reason for this is the memory allocation overhead that the **compiler needs to keep track of the allocated blocks of memory** - which in itself consumes memory. If we change the above call to e.g. `new MyClass[100]()`, we will see that the overhead of 8 bytes does not change:
 
         * ```bash
             new: Allocating 408 bytes of memory
@@ -4636,8 +4636,7 @@ When working with classes it is often helpful to be able to refer to the current
 
         * The important message of the function argument of `myFunction` to the programmer is : The object that binds to the `rvalue` reference `&&val` is yours, it is not needed anymore within the scope of the caller (which is main). As discussed in the previous section on `rvalue` references, this is interesting from two perspectives:
 
-        * Passing values like this `improves performance` as no temporary copy needs to be made anymore and
-        * `ownership changes`, since the object the reference binds to has been abandoned by the caller and now binds to a handle which is available only to the receiver. This could not have been achieved with `lvalue` references as any change to the object that binds to the `lvalue` **reference** would also be visible on the caller side.    
+        * Passing values like this `improves performance` as no temporary copy needs to be made anymore and `ownership changes`, since the object the reference binds to has been abandoned by the caller and now binds to a handle which is available only to the receiver. This could not have been achieved with `lvalue` references as any change to the object that binds to the `lvalue` **reference** would also be visible on the caller side.    
 
         * There is one more important aspect we need to consider: `rvalue` references are themselves `lvalues`. While this might seem confusing at first glance, it really is the mechanism that enables `move semantics`: A reference is always defined in a certain context (such as in the above example the variable val) . Even though the object it refers to (the number 42) may be disposable in the context it has been created (the main function), it is not disposable in the context of the reference . So within the scope of `myFunction`, `val` is an `lvalue` as it gives access to the memory location where the number 42 is stored.
 
@@ -4786,7 +4785,7 @@ When working with classes it is often helpful to be able to refer to the current
         * In the `main` above, the returned value of `createObject(10)` is passed to the copy constructor. The function `createObject()` returns an instance of `MyMovableClass` by value. In such a case, the compiler creates a temporary copy of the object as an `rvalue`, which is passed to the copy constructor.
 
             * A special call to copy constructor
-            * Try compiling and then running the rule_of_three.cpp to notice that MyMovableClass obj4 = createObject(10); would not print the cout statement of copy constructor on the console. This is because the copy constructor is called on the temporary object.
+            * Try compiling and then running the rule_of_three.cpp to notice that `MyMovableClass obj4 = createObject(10);` would not print the cout statement of copy constructor on the console. This is because the copy constructor is called on the temporary object.
 
     * In our current class design, while creating `obj4`, the data is **dynamically allocated on the stack**, which is then copied from the temporary object to its target destination. This means that two expensive memory operations are performed with the first occurring during the creation of the **temporary rvalue** and the second during the execution of the copy constructor. The similar two expensive memory operations would be performed with the assignment operator if we execute the following statement inside `main`:
 
@@ -6265,11 +6264,11 @@ When working with classes it is often helpful to be able to refer to the current
     * ```cpp
         // this is a functor
         struct add_x {
-        add_x(int val) : x(val) {}  // Constructor
-        int operator()(int y) const { return x + y; }
+            add_x(int val) : x(val) {}  // Constructor
+            int operator()(int y) const { return x + y; }
 
-        private:
-        int x;
+            private:
+            int x;
         };
 
         // Now you can use it like this:
@@ -6836,7 +6835,7 @@ When working with classes it is often helpful to be able to refer to the current
     
     * When we try to compile the program using the `push_back()` function (which is the usual way in most cases), we get a compiler error. The problem with our code is that by pushing the thread object into the vector, **we attempt to make a copy of it**. However, thread objects do not have a `copy constructor` and thus can not be duplicated. If this were possible, we would create yet another branch in the flow of execution - which is not what we want. The solution to this problem is to use `move semantics`, which provide a convenient way for the contents of objects to be 'moved' between objects, rather than copied. It might be a good idea at this point to refresh your knowledge on `move semantics`, on `rvalues` and `lvalues` as well as on `rvalue references`, as we will make use of these concepts throughout the course.
 
-    * To solve our problem, we can use the function `emplace_back()` instead of `push_back()`, which internally uses `move semantics` to move our thread object into the vector without making a copy. When executing the code, we get the following output:
+    * **To solve our problem, we can use the function `emplace_back()` instead of `push_back()`, which internally uses `move semantics` to move our thread object into the vector without making a copy. When executing the code, we get the following output:**
 
     * ```bash
         Hello from Worker thread #Hello from Worker thread #140370329347840140370337740544
