@@ -1,0 +1,3 @@
+/home/dmapar/Desktop/Workspace/modern-cpp/CppND-Capstone-Snake-Game/build/CMakeFiles/rebuild_cache.dir
+/home/dmapar/Desktop/Workspace/modern-cpp/CppND-Capstone-Snake-Game/build/CMakeFiles/edit_cache.dir
+/home/dmapar/Desktop/Workspace/modern-cpp/CppND-Capstone-Snake-Game/build/CMakeFiles/SnakeGame.dir

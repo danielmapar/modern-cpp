@@ -104,6 +104,7 @@
         "future": "cpp",
         "condition_variable": "cpp",
         "coroutine": "cpp",
-        "resumable": "cpp"
+        "resumable": "cpp",
+        "shared_mutex": "cpp"
     }
 }
