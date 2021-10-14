@@ -2,6 +2,7 @@
 #define GAME_SCREEN_H
 
 #include <random>
+#include <mutex>
 #include "screen.h"
 #include "snake.h"
 #include "SDL.h"
@@ -17,6 +18,7 @@ public:
     int GetSize() const;
 
 private:
+    std::mutex mutex;
     std::uniform_int_distribution<int> random_w;
     std::uniform_int_distribution<int> random_h;
     std::random_device dev;

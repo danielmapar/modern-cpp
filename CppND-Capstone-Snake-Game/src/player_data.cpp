@@ -43,6 +43,7 @@ void PlayerData::PrintScoreBoard()
                   return player_a.second > player_b.second;
               });
 
+    std::cout << "<-------Score Board------->" << std::endl;
     // Iterate
     for (const std::pair<const std::string, int> &player : players_data_list)
     {

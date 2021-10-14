@@ -1,4 +1,7 @@
 #include <random>
+#include <ctime>
+#include <future>
+#include <thread>
 #include "SDL.h"
 #include "game_screen.h"
 #include "debug.h"
@@ -34,6 +37,9 @@ void GameScreen::Run(Controller const &controller, Renderer &renderer, std::size
     int frame_count = 0;
     bool running = true;
 
+    std::time_t thread_start_time = std::time(nullptr);
+    std::time_t thread_end_time = std::time(nullptr);
+
     while (running)
     {
         frame_start = SDL_GetTicks();
@@ -45,6 +51,22 @@ void GameScreen::Run(Controller const &controller, Renderer &renderer, std::size
             return;
 
         snake.Update();
+
+        thread_end_time = std::time(nullptr);
+
+        // Move food every 10 seconds
+        const int timeout_move_food = 10;
+        if ((thread_end_time - thread_start_time) > timeout_move_food) {
+            thread_start_time = std::time(nullptr);
+
+            if (Debug::active)
+                std::cout << "Moving food!" << std::endl;
+
+            std::future<void> ftr = std::async(std::launch::async, [this] () {
+                PlaceFood();
+            });
+        }
+
 
         int new_x = static_cast<int>(snake.head_x);
         int new_y = static_cast<int>(snake.head_y);
@@ -88,6 +110,8 @@ void GameScreen::Run(Controller const &controller, Renderer &renderer, std::size
 
 void GameScreen::PlaceFood()
 {
+
+    std::lock_guard<std::mutex> lck(mutex);
     int x, y;
     while (true)
     {
@@ -99,6 +123,7 @@ void GameScreen::PlaceFood()
         {
             food.x = x;
             food.y = y;
+            mutex.unlock();
             return;
         }
     }
