@@ -25,7 +25,7 @@ This is a repo for the Capstone project in the [Udacity C++ Nanodegree Program](
 2. Make a build directory in the top level directory: `mkdir build && cd build`
 3. Compile: `cmake .. && make`
 4. Run it: `./SnakeGame`.
-  * Use the `-d` flag to show debugging messages: `./SnakeGame -d`.
+* Use the `-d` flag to show debugging messages: `./SnakeGame -d`.
 
 ## Rubric Overview
 
