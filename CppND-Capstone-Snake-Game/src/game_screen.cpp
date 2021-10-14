@@ -59,11 +59,19 @@ void GameScreen::Run(Controller const &controller, Renderer &renderer, std::size
         if ((thread_end_time - thread_start_time) > timeout_move_food) {
             thread_start_time = std::time(nullptr);
 
-            if (Debug::active)
-                std::cout << "Moving food!" << std::endl;
-
-            std::future<void> ftr = std::async(std::launch::async, [this] () {
+            std::future<void> future_moving = std::async(std::launch::async, [this] () {
+                if (Debug::active)
+                    std::cout << "Moving food!" << std::endl;
                 PlaceFood();
+                condition_variable.notify_one();
+            });
+
+            std::future<void> future_score = std::async(std::launch::async, [this] () {
+                std::unique_lock<std::mutex> uLock(mutex);
+                condition_variable.wait(uLock, [] () { 
+                    return true;
+                });
+                std::cout << "Food changed position!" << std::endl << "Your score is: " << score << std::endl; 
             });
         }
 
@@ -123,7 +131,6 @@ void GameScreen::PlaceFood()
         {
             food.x = x;
             food.y = y;
-            mutex.unlock();
             return;
         }
     }

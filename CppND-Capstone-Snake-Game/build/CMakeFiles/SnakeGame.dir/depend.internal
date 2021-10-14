@@ -163,6 +163,7 @@ CMakeFiles/SnakeGame.dir/src/main.cpp.o
  /home/dmapar/Desktop/Workspace/modern-cpp/CppND-Capstone-Snake-Game/src/game.h
  /home/dmapar/Desktop/Workspace/modern-cpp/CppND-Capstone-Snake-Game/src/main.cpp
 CMakeFiles/SnakeGame.dir/src/player_data.cpp.o
+ /home/dmapar/Desktop/Workspace/modern-cpp/CppND-Capstone-Snake-Game/src/debug.h
  /home/dmapar/Desktop/Workspace/modern-cpp/CppND-Capstone-Snake-Game/src/player_data.cpp
  /home/dmapar/Desktop/Workspace/modern-cpp/CppND-Capstone-Snake-Game/src/player_data.h
 CMakeFiles/SnakeGame.dir/src/renderer.cpp.o

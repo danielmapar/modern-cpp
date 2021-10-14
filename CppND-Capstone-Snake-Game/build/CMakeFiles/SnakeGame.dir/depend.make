@@ -162,6 +162,7 @@ CMakeFiles/SnakeGame.dir/src/main.cpp.o: ../src/debug.h
 CMakeFiles/SnakeGame.dir/src/main.cpp.o: ../src/game.h
 CMakeFiles/SnakeGame.dir/src/main.cpp.o: ../src/main.cpp
 
+CMakeFiles/SnakeGame.dir/src/player_data.cpp.o: ../src/debug.h
 CMakeFiles/SnakeGame.dir/src/player_data.cpp.o: ../src/player_data.cpp
 CMakeFiles/SnakeGame.dir/src/player_data.cpp.o: ../src/player_data.h
 

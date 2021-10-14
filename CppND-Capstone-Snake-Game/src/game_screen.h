@@ -3,6 +3,7 @@
 
 #include <random>
 #include <mutex>
+#include <future>
 #include "screen.h"
 #include "snake.h"
 #include "SDL.h"
@@ -18,6 +19,7 @@ public:
     int GetSize() const;
 
 private:
+    std::condition_variable condition_variable;
     std::mutex mutex;
     std::uniform_int_distribution<int> random_w;
     std::uniform_int_distribution<int> random_h;

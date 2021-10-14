@@ -62,14 +62,17 @@ This is a repo for the Capstone project in the [Udacity C++ Nanodegree Program](
   * An example can be found on `line 15` of `screen.h`. This is the base class for `game_screen.cpp`, `setup_screen.cpp` and `score_screen.cpp`
 - [x] Derived class functions override virtual base class functions.
   * An example can be found on `line 15` of `game_screen.h`. 
-- [ ] Templates generalize functions in the project.
+- [x] Templates generalize functions in the project.
+  * An example can be found on `line 21` of `player_data.h`. 
 
 ### Memory Management
 
 - [x] The project makes use of references in function declarations.
   * An example can be found on `line 15` of `game_screen.h`.
-- [ ] The project uses destructors appropriately.
-- [ ] The project uses scope / Resource Acquisition Is Initialization (RAII) where appropriate.
+- [X] The project uses destructors appropriately.
+  * An example can be found on `line 18` of `player_data.cpp`.
+- [X] The project uses scope / Resource Acquisition Is Initialization (RAII) where appropriate.
+  * An example can be found on `line 19` of `player_data.cpp`.
 - [x] The project follows the Rule of 5. 
   * An example can be found on `line 15` of `game_screen.h`.
 - [x] The project uses move semantics to move data, instead of copying it, where possible.
@@ -81,10 +84,12 @@ This is a repo for the Capstone project in the [Udacity C++ Nanodegree Program](
 
 - [x] The project uses multithreading.
   * An example can be found on `line 65` of `game_screen.cpp` function `Run`.
-- [ ] A promise and future is used in the project.
+- [x] A promise and future is used in the project.
+  * An example can be found on `line 33` of `score_screen.cpp` function `Run`.
 - [x] A mutex or lock is used in the project.
   * An example can be found on `line 114` of `game_screen.cpp` function `PlaceFood`.
-- [ ] A condition variable is used in the project.
+- [x] A condition variable is used in the project.
+  * An example can be found on `line 71` of `game_screen.cpp` function `PlaceFood`.
 
 ## CC Attribution-ShareAlike 4.0 International
 

@@ -1,29 +1,28 @@
 #include "player_data.h"
+#include "debug.h"
 #include <fstream>
 #include <sstream>
 #include <utility>
 #include <vector>
 #include <algorithm>
 
+PlayerData::~PlayerData() {
+    if (Debug::active)
+        std::cout << "Player Data Destructor" << std::endl;
+    file->close();
+    delete file;
+}
+
 PlayerData::PlayerData() : file_name("./user_scores.csv")
 {
-    std::fstream player_data_file;
-
-    player_data_file.open(file_name, std::fstream::in | std::fstream::out | std::fstream::app);
-
-    // If player data file does not exist, Create new file
-    if (!player_data_file)
-    {
-        std::cout << "Cannot open " << file_name << " file, file does not exist. Creating new file..";
-
-        player_data_file.open(file_name, std::fstream::in | std::fstream::out | std::fstream::trunc);
-        player_data_file.close();
-    }
+    file = new std::fstream();
+    file->open(file_name, std::fstream::in | std::fstream::out | std::fstream::app);
+    file->close();
 }
 
 void PlayerData::PrintScoreBoard()
 {
-    std::unordered_map<std::string, int> players_data = GetScoreBoard();
+    std::unordered_map<std::string, int> players_data = GetScoreBoard<std::string, int>();
 
     // Declare vector of pairs
     std::vector<std::pair<std::string, int>> players_data_list;
@@ -56,11 +55,11 @@ void PlayerData::PrintScoreBoard()
 bool PlayerData::Create(std::string &name)
 {
 
-    std::unordered_map<std::string, int> players_data = GetScoreBoard();
-    if (players_data.find(name) == players_data.end())
-        players_data[name] = 0;
-
     PlayerData::name = name;
+
+    std::unordered_map<std::string, int> players_data = GetScoreBoard<std::string, int>();
+    if (players_data.find(PlayerData::name) == players_data.end())
+        players_data[PlayerData::name] = 0;
 
     Save(players_data);
     return true;
@@ -69,22 +68,24 @@ bool PlayerData::Create(std::string &name)
 bool PlayerData::Update(int score)
 {
 
-    std::unordered_map<std::string, int> players_data = GetScoreBoard();
+    std::unordered_map<std::string, int> players_data = GetScoreBoard<std::string, int>();
     players_data[PlayerData::name] = score;
 
     Save(players_data);
     return true;
 }
 
-std::unordered_map<std::string, int> PlayerData::GetScoreBoard()
+template <typename KeyType, typename ValueType>
+std::unordered_map<KeyType, ValueType> PlayerData::GetScoreBoard()
 {
-    std::unordered_map<std::string, int> players_data{};
+    std::unordered_map<KeyType, ValueType> players_data{};
 
     std::string line;
-    std::ifstream player_file_stream(file_name);
-    if (player_file_stream.is_open())
+
+    file->open(file_name, std::ios::in);
+    if (file->is_open())
     {
-        while (getline(player_file_stream, line, '\n'))
+        while (getline(*file, line, '\n'))
         {
             std::stringstream line_stream(line);
             std::string name;
@@ -96,7 +97,7 @@ std::unordered_map<std::string, int> PlayerData::GetScoreBoard()
             }
             players_data[name] = std::stoi(score);
         }
-        player_file_stream.close();
+        file->close();
     }
 
     return players_data;
@@ -104,13 +105,12 @@ std::unordered_map<std::string, int> PlayerData::GetScoreBoard()
 
 bool PlayerData::Save(std::unordered_map<std::string, int> &players_data)
 {
-    std::fstream player_file_stream;
-    player_file_stream.open(file_name, std::ios::out | std::ios::trunc);
+    file->open(file_name, std::ios::out | std::ios::trunc);
     // Iterate
     for (const std::pair<std::string, int> &player : players_data)
     {
-        player_file_stream << player.first << "," << player.second << "\n";
+        *file << player.first << "," << player.second << "\n";
     }
-    player_file_stream.close();
+    file->close();
     return true;
 }
